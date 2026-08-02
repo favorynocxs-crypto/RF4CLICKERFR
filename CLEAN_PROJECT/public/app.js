@@ -506,8 +506,24 @@ function updateCombatUI() {
   }
 }
 
+let userClickTimestamps = [];
+
 function dealDamage(e) {
   if (fishingState !== 'combat' || !activeFish) return;
+
+  const now = Date.now();
+  userClickTimestamps.push(now);
+  // Keep only clicks within the last 1000ms (1 second)
+  userClickTimestamps = userClickTimestamps.filter(t => now - t <= 1000);
+
+  // If CPS > 12, disconnect user directly
+  if (userClickTimestamps.length > 12) {
+    userClickTimestamps = [];
+    resetFishingState();
+    showToast("Vitesse de clic excessive (+12 CPS) ! Déconnexion de sécurité.", "danger");
+    logout();
+    return;
+  }
 
   // Clicks dealt is increased by click power (spcRate)
   combatClicksDealt += spcRate;
