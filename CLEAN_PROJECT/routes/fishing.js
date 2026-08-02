@@ -135,8 +135,8 @@ router.post('/land', authenticate, async (req, res) => {
     const leveledUp = newLevel > req.user.level;
 
     await db.query(
-      'UPDATE users SET xp = $1, level = $2, last_active = CURRENT_TIMESTAMP, current_rod_durability = GREATEST(0.0, current_rod_durability - $3), current_reel_durability = GREATEST(0.0, current_reel_durability - $3) WHERE id = $4',
-      [newXP, newLevel, wear, req.user.id]
+      'UPDATE users SET xp = $1, level = $2, total_catches = total_catches + 1, total_clicks = total_clicks + $3, last_active = CURRENT_TIMESTAMP, current_rod_durability = GREATEST(0.0, current_rod_durability - $4), current_reel_durability = GREATEST(0.0, current_reel_durability - $4) WHERE id = $5',
+      [newXP, newLevel, Math.ceil(data.clicksRequired), wear, req.user.id]
     );
     
     await db.query('COMMIT');
