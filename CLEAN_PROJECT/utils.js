@@ -32,7 +32,7 @@ function verifyFishToken(token) {
 
 function calculateLevel(xp) {
   let level = 1;
-  while (xp >= level * level * 100) {
+  while (xp >= level * level * 250) {
     level++;
   }
   return level;
