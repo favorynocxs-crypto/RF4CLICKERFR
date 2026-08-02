@@ -116,17 +116,7 @@ router.post('/land', authenticate, async (req, res) => {
   }
 
   try {
-    const stats = await getUserStats(req.user.id, req.user);
-    const elapsedTimeMs = Date.now() - (data.startTime || Date.now());
-    
-    const actualClicksNeeded = Math.ceil(data.clicksRequired / Math.max(1, stats.spc));
-    const minTimeMs = (actualClicksNeeded / 12.0) * 1000; 
-
-    if (elapsedTimeMs < minTimeMs) {
-      const banUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-      await db.query('UPDATE users SET ban_until = $1 WHERE id = $2', [banUntil, req.user.id]);
-      return res.status(403).json({ error: 'Macro ou autoclicker détecté ! Compte suspendu 1 heure.' });
-    }
+    // Removed strict time-based ban check to avoid false positives
 
     await db.query('BEGIN');
     
