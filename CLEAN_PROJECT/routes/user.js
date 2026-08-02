@@ -46,35 +46,9 @@ router.get('/state', authenticate, async (req, res) => {
       await db.query('UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id = $1', [req.user.id]);
     }
 
-    // Migration: Upgrade old starter gear
-    if (req.user.current_rod === 'Starter Rod' || req.user.current_rod === 'Siberia Starter Tele' || req.user.current_rod === 'Starter Tele') {
-      await db.query(`UPDATE users SET current_rod = 'Comfort FD360' WHERE id = $1`, [req.user.id]);
-      req.user.current_rod = 'Comfort FD360';
-    }
-    if (req.user.current_reel === 'Starter Reel' || req.user.current_reel === 'Express Fishing Lacerti 4000S') {
-      await db.query(`UPDATE users SET current_reel = 'Express Fishing Spark 1 2000S' WHERE id = $1`, [req.user.id]);
-      req.user.current_reel = 'Express Fishing Spark 1 2000S';
-    }
-    if (req.user.current_line === 'Starter Line') {
-      await db.query(`UPDATE users SET current_line = 'Siberia Mono SS (3.2kg)' WHERE id = $1`, [req.user.id]);
-      req.user.current_line = 'Siberia Mono SS (3.2kg)';
-    }
-    
-    // Migration: Translate map names
-    const mapTranslations = {
-      'Mosquito Lake': 'Lac aux moustique',
-      'Winding Rivulet': 'Rivière Belaya',
-      'Kuori Lake': 'Lac cuivré',
-      'Bear Lake': 'Mer de Norvège'
-    };
-    if (mapTranslations[req.user.current_water_body]) {
-      const translatedMap = mapTranslations[req.user.current_water_body];
-      await db.query(`UPDATE users SET current_water_body = $1 WHERE id = $2`, [translatedMap, req.user.id]);
-      req.user.current_water_body = translatedMap;
-    }
-
-    // The variables are already declared above and vivier/quests are handled here
-    const vivier = await getVivierContents(req.user.id);
+    // Get vivier (fish stringer) contents
+    const vivierRows = await db.all('SELECT * FROM vivier WHERE user_id = $1', [req.user.id]);
+    const vivier = vivierRows || [];
     const quests = await getQuestsStatus(req.user.id);
 
     res.json({
