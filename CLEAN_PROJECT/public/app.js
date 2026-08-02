@@ -740,7 +740,8 @@ function renderInventory() {
   grid.innerHTML = '';
   if (!userState) return;
 
-  const gearItems = userState.inventory.filter(i => i.item_type !== 'auto_fisher');
+  // Only show equipable gear: Rods, Reels, Lines, Baits
+  const gearItems = userState.inventory.filter(i => ['rod', 'reel', 'line', 'bait'].includes(i.item_type));
 
   if (gearItems.length === 0) {
     grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; grid-column:1/-1;">Sac vide.</p>';
@@ -821,15 +822,16 @@ function renderOwnedHelpers() {
   ownedHelpersList.innerHTML = '';
   if (!userState) return;
 
-  const helpers = userState.inventory.filter(i => i.item_type === 'auto_fisher');
+  const helpers = userState.inventory.filter(i => i.item_type === 'auto_fisher' || i.item_type === 'auto_clicker');
 
   if (helpers.length === 0) {
-    ownedHelpersList.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 10px;">Aucun auto-pêcheur actif.</p>';
+    ownedHelpersList.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 10px;">Aucune amélioration active.</p>';
     return;
   }
 
   helpers.forEach(item => {
-    const config = metadata.autoFishers[item.item_name];
+    const config = metadata.autoFishers[item.item_name] || metadata.autoClickers[item.item_name];
+    if (!config) return;
     const totalSPS = item.quantity * config.sps * userState.stats.lakeMult;
     
     const card = document.createElement('div');
