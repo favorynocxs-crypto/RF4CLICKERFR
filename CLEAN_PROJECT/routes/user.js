@@ -1,12 +1,18 @@
 const express = require('express');
 const db = require('../database');
 const { WATER_BODIES, RODS, REELS, LINES, BAITS, AUTO_FISHERS, AUTO_CLICKER, FISH_DATABASE } = require('../data/constants');
-const { getUserStats, getQuestsStatus, authenticate } = require('../utils');
+const { getUserStats, getQuestsStatus, calculateLevel, authenticate } = require('../utils');
 
 const router = express.Router();
 
 router.get('/state', authenticate, async (req, res) => {
   try {
+    const newLevel = calculateLevel(req.user.xp);
+    if (newLevel !== req.user.level) {
+      req.user.level = newLevel;
+      await db.query('UPDATE users SET level = $1 WHERE id = $2', [newLevel, req.user.id]);
+    }
+
     if (req.user.current_water_body === 'Mosquito Lake' || !WATER_BODIES[req.user.current_water_body]) {
       req.user.current_water_body = 'Lac aux moustique';
       await db.query('UPDATE users SET current_water_body = \'Lac aux moustique\' WHERE id = $1', [req.user.id]);
