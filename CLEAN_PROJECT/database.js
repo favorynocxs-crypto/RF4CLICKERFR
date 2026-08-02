@@ -101,6 +101,16 @@ async function initSchema() {
     )`);
     await client.query(`ALTER TABLE user_quests ADD COLUMN IF NOT EXISTS last_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
 
+    // Vivier (fish stringer) table
+    await client.query(`CREATE TABLE IF NOT EXISTS vivier (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      fish_name TEXT NOT NULL,
+      weight REAL NOT NULL,
+      silver_value REAL NOT NULL,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // Migration of legacy items to the new specified ones
     try {
       await client.query(`UPDATE users SET current_rod = 'Comfort FD360' WHERE current_rod = 'Starter Rod' OR current_rod = 'Siberia Starter Tele' OR current_rod = 'Starter Tele'`);
