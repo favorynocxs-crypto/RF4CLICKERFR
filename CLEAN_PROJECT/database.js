@@ -64,18 +64,6 @@ async function initSchema() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS has_ameliorateur BOOLEAN DEFAULT FALSE`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS has_offline BOOLEAN DEFAULT FALSE`);
 
-    // Migration of legacy items to the new specified ones
-    try {
-      await client.query(`UPDATE users SET current_rod = 'Comfort FD360' WHERE current_rod = 'Starter Rod' OR current_rod = 'Siberia Starter Tele'`);
-      await client.query(`UPDATE users SET current_reel = 'Express Fishing Spark 1 2000S' WHERE current_reel = 'Starter Reel' OR current_reel = 'Express Fishing Lacerti 4000S'`);
-      await client.query(`UPDATE users SET current_line = 'Siberia Mono SS (3.2kg)' WHERE current_line = 'Starter Line'`);
-      await client.query(`UPDATE inventory SET item_name = 'Comfort FD360' WHERE item_type = 'rod' AND (item_name = 'Starter Rod' OR item_name = 'Siberia Starter Tele')`);
-      await client.query(`UPDATE inventory SET item_name = 'Express Fishing Spark 1 2000S' WHERE item_type = 'reel' AND (item_name = 'Starter Reel' OR item_name = 'Express Fishing Lacerti 4000S')`);
-      await client.query(`UPDATE inventory SET item_name = 'Siberia Mono SS (3.2kg)' WHERE item_type = 'line' AND item_name = 'Starter Line'`);
-    } catch(e) {
-      console.log("Migration warning:", e.message);
-    }
-
     // Inventory Table
     await client.query(`CREATE TABLE IF NOT EXISTS inventory (
       id SERIAL PRIMARY KEY,
@@ -112,6 +100,18 @@ async function initSchema() {
       UNIQUE(user_id, quest_id)
     )`);
     await client.query(`ALTER TABLE user_quests ADD COLUMN IF NOT EXISTS last_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+
+    // Migration of legacy items to the new specified ones
+    try {
+      await client.query(`UPDATE users SET current_rod = 'Comfort FD360' WHERE current_rod = 'Starter Rod' OR current_rod = 'Siberia Starter Tele' OR current_rod = 'Starter Tele'`);
+      await client.query(`UPDATE users SET current_reel = 'Express Fishing Spark 1 2000S' WHERE current_reel = 'Starter Reel' OR current_reel = 'Express Fishing Lacerti 4000S'`);
+      await client.query(`UPDATE users SET current_line = 'Siberia Mono SS (3.2kg)' WHERE current_line = 'Starter Line'`);
+      await client.query(`UPDATE inventory SET item_name = 'Comfort FD360' WHERE item_type = 'rod' AND (item_name = 'Starter Rod' OR item_name = 'Siberia Starter Tele' OR item_name = 'Starter Tele')`);
+      await client.query(`UPDATE inventory SET item_name = 'Express Fishing Spark 1 2000S' WHERE item_type = 'reel' AND (item_name = 'Starter Reel' OR item_name = 'Express Fishing Lacerti 4000S')`);
+      await client.query(`UPDATE inventory SET item_name = 'Siberia Mono SS (3.2kg)' WHERE item_type = 'line' AND item_name = 'Starter Line'`);
+    } catch(e) {
+      console.log("Migration warning:", e.message);
+    }
 
     await client.query('COMMIT');
   } catch (err) {
