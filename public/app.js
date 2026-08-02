@@ -1,6 +1,6 @@
 const API_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? ''
-  : 'https://rf4-clicker-online.onrender.com';
+  : 'https://rf4clickerfr.onrender.com';
 
 // Slug helpers for authentic images loading
 function getImageSlug(name) {
