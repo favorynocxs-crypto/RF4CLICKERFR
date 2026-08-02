@@ -46,8 +46,8 @@ router.get('/state', authenticate, async (req, res) => {
       await db.query('UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id = $1', [req.user.id]);
     }
 
-    // Get vivier (fish stringer) contents
-    const vivierRows = await db.all('SELECT * FROM vivier WHERE user_id = $1', [req.user.id]);
+    // Get vivier (fish stringer) contents - unsold fish from catches
+    const vivierRows = await db.all('SELECT id, fish_name, weight, silver_value, xp_value, sold, timestamp FROM catches WHERE user_id = $1 ORDER BY timestamp DESC', [req.user.id]);
     const vivier = vivierRows || [];
     const quests = await getQuestsStatus(req.user.id);
 
