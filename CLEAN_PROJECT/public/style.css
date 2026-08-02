@@ -59,10 +59,10 @@ body::before {
 
 #game-screen {
   background-size: cover;
-  background-position: center;
+  background-position: center center;
   background-repeat: no-repeat;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+  filter: contrast(108%) brightness(102%) saturate(105%);
   transition: background-image 0.5s ease-in-out;
 }
 
