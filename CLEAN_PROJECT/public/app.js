@@ -1,6 +1,6 @@
 const API_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? ''
-  : 'https://rf4-clicker-online.onrender.com';
+  : 'https://rf4clickerfr.onrender.com';
 
 // Slug helpers for authentic images loading
 function getImageSlug(name) {
@@ -211,11 +211,12 @@ function startLoops() {
   }, 12000);
 }
 
+// Background images for water bodies
 const WATER_BODIES_BG = {
-  'Lac aux moustique': 'map_moustique.jpg',
-  'Rivière Belaya': 'map_belaya.jpg',
-  'Lac cuivré': 'map_cuivre.jpg',
-  'Mer de Norvège': 'map_norvege.jpg'
+  'Lac aux moustique': 'images/map_moustique.jpg',
+  'Rivière Belaya': 'images/map_belaya.jpg',
+  'Lac cuivré': 'images/map_cuivre.jpg',
+  'Mer de Norvège': 'images/map_norvege.jpg'
 };
 
 function updateHUD() {
