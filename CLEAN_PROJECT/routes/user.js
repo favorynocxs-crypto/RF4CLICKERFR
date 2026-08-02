@@ -55,6 +55,11 @@ router.get('/state', authenticate, async (req, res) => {
     // Get vivier (fish stringer) contents - unsold fish from catches
     const vivierRows = await db.all('SELECT id, fish_name, weight, silver_value, xp_value, sold, timestamp FROM catches WHERE user_id = $1 AND (sold = FALSE OR sold IS NULL) ORDER BY timestamp DESC', [req.user.id]);
     const vivier = vivierRows || [];
+
+    // Get all catches for records (Mes Prises)
+    const allCatchesRows = await db.all('SELECT fish_name, weight, silver_value, timestamp FROM catches WHERE user_id = $1 ORDER BY weight DESC', [req.user.id]);
+    const records = allCatchesRows || [];
+
     const quests = await getQuestsStatus(req.user.id);
 
     res.json({
@@ -68,11 +73,17 @@ router.get('/state', authenticate, async (req, res) => {
         current_reel: req.user.current_reel,
         current_line: req.user.current_line,
         current_bait: req.user.current_bait,
-        current_style: req.user.current_style
+        current_style: req.user.current_style,
+        total_catches: req.user.total_catches || 0,
+        total_capital: req.user.total_capital || 0,
+        total_silver_spent: req.user.total_silver_spent || 0,
+        total_time_played: req.user.total_time_played || 0,
+        total_clicks: req.user.total_clicks || 0
       },
       inventory,
       stats,
       vivier,
+      records,
       quests,
       offline: {
         seconds: elapsedSeconds,
