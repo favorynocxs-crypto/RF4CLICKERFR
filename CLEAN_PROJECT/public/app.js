@@ -1193,14 +1193,34 @@ function renderStats() {
   if (el('stat-clicks')) el('stat-clicks').innerText = u.total_clicks || 0;
 }
 
+let selectedPrisesMapFilter = 'all';
+
 function renderPrises() {
   const grid = document.getElementById('prises-grid');
   grid.innerHTML = '';
-  const fishList = (userState && userState.records) ? userState.records : ((userState && userState.vivier) ? userState.vivier : []);
+  const allFishList = (userState && userState.records) ? userState.records : ((userState && userState.vivier) ? userState.vivier : []);
   
-  // Group by fish_name (which includes rarity) to find the max weight
+  // Filter ONLY Trophée and Trophée Bleu fish
+  const trophyFishList = allFishList.filter(f => f.fish_name.includes('(Trophée') || f.fish_name.includes('Trophée Bleu'));
+
+  // Group by fish_name to find the max weight per trophy type
   const recordsObj = {};
-  fishList.forEach(f => {
+  trophyFishList.forEach(f => {
+    // If map filter is active, filter by species map
+    if (selectedPrisesMapFilter !== 'all') {
+      const baseName = getBaseFishName(f.fish_name);
+      let fishMap = '';
+      if (metadata && metadata.fishDatabase) {
+        for (const [mapName, speciesArray] of Object.entries(metadata.fishDatabase)) {
+          if (speciesArray.some(s => s.name === baseName)) {
+            fishMap = mapName;
+            break;
+          }
+        }
+      }
+      if (fishMap !== selectedPrisesMapFilter) return;
+    }
+
     if (!recordsObj[f.fish_name] || f.weight > recordsObj[f.fish_name].weight) {
       recordsObj[f.fish_name] = f;
     }
@@ -1209,7 +1229,7 @@ function renderPrises() {
   const uniqueRecords = Object.values(recordsObj).sort((a, b) => b.weight - a.weight);
 
   if (uniqueRecords.length === 0) {
-    grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Aucune prise enregistrée.</p>';
+    grid.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 20px; grid-column:1/-1;">Aucun trophée enregistré ${selectedPrisesMapFilter !== 'all' ? 'sur ' + selectedPrisesMapFilter : ''}. Allez pêcher ! 🏆</p>`;
     return;
   }
 
@@ -1219,8 +1239,6 @@ function renderPrises() {
     let labelClass = 'rarity-tague';
     if (fish.fish_name.includes('(Trophée Bleu)')) { cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; }
     else if (fish.fish_name.includes('(Trophée)')) { cardClass += ' trophee'; labelClass = 'rarity-trophee'; }
-    else if (fish.fish_name.includes('(Non-Tagué)')) { cardClass += ' non-tague'; labelClass = 'rarity-non-tague'; }
-    else { cardClass += ' tague'; labelClass = 'rarity-tague'; }
     
     const baseName = getBaseFishName(fish.fish_name);
     const slug = getImageSlug(baseName);
@@ -1229,17 +1247,30 @@ function renderPrises() {
     card.innerHTML = `
       <div class="card-img-container">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        <div class="fallback-icon fish-fallback">🐟</div>
+        <div class="fallback-icon fish-fallback">🏆</div>
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
-        <p>Record Poids: ${fish.weight.toFixed(3)} kg</p>
+        <p>Record Poids: <strong>${fish.weight.toFixed(3)} kg</strong></p>
         <p>Taille: ${Math.floor(Math.pow(fish.weight, 1/3) * 35)} cm</p>
       </div>
     `;
     grid.appendChild(card);
   });
 }
+
+// Add map filter tab button event listeners for Mes Prises
+document.addEventListener('DOMContentLoaded', () => {
+  const filterBtns = document.querySelectorAll('#prises-map-filter .shop-tab-btn');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedPrisesMapFilter = btn.getAttribute('data-map-filter');
+      renderPrises();
+    });
+  });
+});
 
 function renderMapInfo() {
   const container = document.getElementById('map-info-container');
