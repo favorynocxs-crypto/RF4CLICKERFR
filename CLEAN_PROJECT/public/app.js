@@ -235,8 +235,8 @@ function updateHUD() {
   document.getElementById('game-screen').style.backgroundImage = `url("${encodedPath}")`;
 
   // XP calculation
-  const currentLvlXP = (user.level - 1) * (user.level - 1) * 100;
-  const nextLvlXP = user.level * user.level * 100;
+  const currentLvlXP = (user.level - 1) * (user.level - 1) * 250;
+  const nextLvlXP = user.level * user.level * 250;
   const progressPercent = Math.min(100, ((user.xp - currentLvlXP) / (nextLvlXP - currentLvlXP)) * 100);
   
   xpProgress.style.width = `${progressPercent}%`;
