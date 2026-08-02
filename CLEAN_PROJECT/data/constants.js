@@ -44,16 +44,16 @@ const FISH_DATABASE = {
     { name: 'Aiglefin', rate: 0.08, minW: 0.5, maxW: 14.3, trophyW: 11.0, blueTrophyW: 13.0, valuePerKg: 25 },
     { name: 'Petit Sébaste', rate: 0.06, minW: 0.3, maxW: 4.4, trophyW: 3.0, blueTrophyW: 4.0, valuePerKg: 35 },
     { name: 'Grand Sébaste', rate: 0.05, minW: 0.8, maxW: 12.1, trophyW: 9.0, blueTrophyW: 11.0, valuePerKg: 45 },
-    { name: 'Lieu Jaune', rate: 0.04, minW: 1.0, maxW: 15.4, trophyW: 11.0, blueTrophyW: 14.0, valuePerKg: 35 },
+    { name: 'Lieu Jaune', rate: 0.0592, minW: 1.0, maxW: 15.4, trophyW: 11.0, blueTrophyW: 14.0, valuePerKg: 35 },
     { name: 'Sébaste de l\'Atlantique', rate: 0.03, minW: 0.5, maxW: 7.7, trophyW: 5.5, blueTrophyW: 7.0, valuePerKg: 55 },
     { name: 'Saumon des Dieux', rate: 0.015, minW: 5.0, maxW: 220.0, trophyW: 140.0, blueTrophyW: 200.0, valuePerKg: 120 },
-    { name: 'Chimère Commune', rate: 0.01, minW: 1.0, maxW: 2.75, trophyW: 1.5, blueTrophyW: 2.5, valuePerKg: 200 },
+    { name: 'Chimère Commune', rate: 0.005, minW: 1.0, maxW: 2.75, trophyW: 1.5, blueTrophyW: 2.5, valuePerKg: 200 },
     { name: 'Espadon', rate: 0.005, minW: 12.0, maxW: 495.0, trophyW: 300.0, blueTrophyW: 450.0, valuePerKg: 150 },
     { name: 'Thon rouge', rate: 0.003, minW: 15.0, maxW: 440.0, trophyW: 250.0, blueTrophyW: 400.0, valuePerKg: 180 },
     { name: 'Requin du Groenland', rate: 0.003, minW: 20.0, maxW: 990.0, trophyW: 600.0, blueTrophyW: 900.0, valuePerKg: 180 },
     { name: 'Requin-Taupe', rate: 0.002, minW: 10.0, maxW: 220.0, trophyW: 140.0, blueTrophyW: 200.0, valuePerKg: 200 },
     { name: 'Requin-lézard', rate: 0.001, minW: 2.0, maxW: 77.0, trophyW: 50.0, blueTrophyW: 70.0, valuePerKg: 220 },
-    { name: 'Requin Pèlerin', rate: 0.0008, minW: 25.0, maxW: 2200.0, trophyW: 1500.0, blueTrophyW: 2000.0, valuePerKg: 120 },
+    { name: 'Requin Pèlerin', rate: 0.02, minW: 25.0, maxW: 2200.0, trophyW: 1500.0, blueTrophyW: 2000.0, valuePerKg: 120 },
     { name: 'Poisson Football de L\'Atlantique', rate: 0.0002, minW: 0.5, maxW: 9.35, trophyW: 7.0, blueTrophyW: 8.5, valuePerKg: 1000 }
   ]
 };
