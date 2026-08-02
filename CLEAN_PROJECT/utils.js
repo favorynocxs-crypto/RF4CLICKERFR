@@ -58,10 +58,12 @@ async function getUserStats(userId, user) {
   if (LINES[line]) critChance += LINES[line].critChance;
 
   let sps = 0.0;
-  const helpers = await db.all('SELECT item_name, quantity FROM inventory WHERE user_id = $1 AND item_type = $2', [userId, 'auto_fisher']);
+  const helpers = await db.all('SELECT item_name, quantity FROM inventory WHERE user_id = $1 AND (item_type = $2 OR item_type = $3)', [userId, 'auto_fisher', 'auto_clicker']);
   for (const h of helpers) {
     if (AUTO_FISHERS[h.item_name]) {
       sps += AUTO_FISHERS[h.item_name].sps * h.quantity;
+    } else if (AUTO_CLICKER[h.item_name]) {
+      sps += AUTO_CLICKER[h.item_name].sps * h.quantity;
     }
   }
 
