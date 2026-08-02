@@ -211,6 +211,7 @@ function startLoops() {
   }, 12000);
 }
 
+// Background images for water bodies
 const WATER_BODIES_BG = {
   'Lac aux moustique': 'map_moustique.jpg',
   'Rivière Belaya': 'map_belaya.jpg',
