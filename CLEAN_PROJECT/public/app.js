@@ -1196,19 +1196,17 @@ function renderStats() {
 function renderPrises() {
   const grid = document.getElementById('prises-grid');
   grid.innerHTML = '';
-  if (!userState || !userState.vivier) return;
-
-  const fishList = userState.vivier;
+  const fishList = (userState && userState.records) ? userState.records : ((userState && userState.vivier) ? userState.vivier : []);
   
   // Group by fish_name (which includes rarity) to find the max weight
-  const records = {};
+  const recordsObj = {};
   fishList.forEach(f => {
-    if (!records[f.fish_name] || f.weight > records[f.fish_name].weight) {
-      records[f.fish_name] = f;
+    if (!recordsObj[f.fish_name] || f.weight > recordsObj[f.fish_name].weight) {
+      recordsObj[f.fish_name] = f;
     }
   });
 
-  const uniqueRecords = Object.values(records).sort((a, b) => b.weight - a.weight);
+  const uniqueRecords = Object.values(recordsObj).sort((a, b) => b.weight - a.weight);
 
   if (uniqueRecords.length === 0) {
     grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Aucune prise enregistrée.</p>';
