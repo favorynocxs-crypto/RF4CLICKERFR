@@ -598,17 +598,16 @@ function renderBourriche() {
 
   const fishList = userState.vivier;
   const unsoldFishes = fishList.filter(f => !f.sold);
-  bourricheCountLbl.innerText = `${fishList.length} poisson(s) (dont ${unsoldFishes.length} à vendre)`;
+  bourricheCountLbl.innerText = `${unsoldFishes.length} poisson(s) à vendre`;
 
-  if (fishList.length === 0) {
+  if (unsoldFishes.length === 0) {
     bourricheGrid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Bourriche vide. Allez pêcher !</p>';
     return;
   }
 
-  fishList.forEach(fish => {
+  unsoldFishes.forEach(fish => {
     const card = document.createElement('div');
     
-    // Class names matching rarity: Non-Tagué, Tagué, Trophée, Trophée Bleu
     let cardClass = 'item-card fish-card';
     let labelClass = 'rarity-tague';
     if (fish.fish_name.includes('(Trophée Bleu)')) { cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; }
@@ -619,29 +618,20 @@ function renderBourriche() {
     const baseName = getBaseFishName(fish.fish_name);
     const slug = getImageSlug(baseName);
 
-    if (fish.sold) {
-      cardClass += ' sold-fish';
-    }
-
     card.className = cardClass;
     card.innerHTML = `
-      <div class="card-img-container" ${fish.sold ? 'style="opacity: 0.5; filter: grayscale(100%);"' : ''}>
+      <div class="card-img-container">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div class="fallback-icon fish-fallback">🐟</div>
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
         <p>Poids: ${fish.weight.toFixed(3)} kg</p>
-        <p>Taille: ${Math.floor(Math.pow(fish.weight, 1/3) * 35)} cm</p>
         <p style="color:var(--accent); font-weight:600; margin-top:3px;">
-          ${fish.sold ? 'VENDU' : `Valeur: ${fish.silver_value.toFixed(2)} Silver`}
+          Valeur: ${fish.silver_value.toFixed(2)} Silver
         </p>
       </div>
     `;
-    if (fish.sold) {
-      card.style.opacity = '0.7';
-      card.style.order = '999'; // Push to bottom (requires flex/grid reordering, optional)
-    }
     bourricheGrid.appendChild(card);
   });
 }
