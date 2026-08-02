@@ -65,8 +65,7 @@ router.get('/state', authenticate, async (req, res) => {
       req.user.current_water_body = translatedMap;
     }
 
-    const inventory = await getUserInventory(req.user.id);
-    const stats = await getUserStats(req.user.id, req.user);
+    // The variables are already declared above and vivier/quests are handled here
     const vivier = await getVivierContents(req.user.id);
     const quests = await getQuestsStatus(req.user.id);
 
