@@ -68,22 +68,22 @@ const WATER_BODIES = {
 const RODS = {
   'Comfort FD360': { maxW: 4.5, cost: 0, addPower: 0, levelRequired: 1, mapName: 'Lac aux moustique' },
   'Siberia Model-Two FD420H': { maxW: 8.5, cost: 180, addPower: 2, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Siberia Fortuna Carp 360XH': { maxW: 16.0, cost: 550, addPower: 8, levelRequired: 12, mapName: 'Lac cuivré' },
-  'KingFisher Legacy Ti': { maxW: 32.0, cost: 2400, addPower: 120, levelRequired: 20, mapName: 'Mer de Norvège' }
+  'Siberia Fortuna Carp 360XH': { maxW: 16.0, cost: 550, addPower: 6, levelRequired: 12, mapName: 'Lac cuivré' },
+  'KingFisher Legacy Ti': { maxW: 32.0, cost: 2400, addPower: 30, levelRequired: 20, mapName: 'Mer de Norvège' }
 };
 
 const REELS = {
   'Express Fishing Spark 1 2000S': { maxDrag: 4.6, cost: 0, multiplier: 1.0, levelRequired: 1, mapName: 'Lac aux moustique' },
-  'Siberia Gold 60S': { maxDrag: 6.5, cost: 220, multiplier: 1.30, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Beluga Venga Classic 10000': { maxDrag: 9.5, cost: 950, multiplier: 2.00, levelRequired: 12, mapName: 'Lac cuivré' },
-  'Reef Turion SW 30000': { maxDrag: 22.5, cost: 3500, multiplier: 6.00, levelRequired: 20, mapName: 'Mer de Norvège' }
+  'Siberia Gold 60S': { maxDrag: 6.5, cost: 220, multiplier: 1.20, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Beluga Venga Classic 10000': { maxDrag: 9.5, cost: 950, multiplier: 1.80, levelRequired: 12, mapName: 'Lac cuivré' },
+  'Reef Turion SW 30000': { maxDrag: 22.5, cost: 3500, multiplier: 4.00, levelRequired: 20, mapName: 'Mer de Norvège' }
 };
 
 const LINES = {
   'Siberia Mono SS (3.2kg)': { strength: 3.2, thickness: 0.18, type: 'Nylon', cost: 0, critChance: 0.0, levelRequired: 1, mapName: 'Lac aux moustique' },
-  'Siberia Fluorocarbone (5.4kg)': { strength: 5.4, thickness: 0.25, type: 'Fluorocarbone', cost: 60, critChance: 0.05, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Siberia Tresse (11.5kg)': { strength: 11.5, thickness: 0.32, type: 'Tresse', cost: 150, critChance: 0.15, levelRequired: 12, mapName: 'Lac cuivré' },
-  'Siberia DevilBraid Tresse (22kg)': { strength: 22.0, thickness: 0.45, type: 'Tresse', cost: 380, critChance: 0.25, levelRequired: 20, mapName: 'Mer de Norvège' }
+  'Siberia Fluorocarbone (5.4kg)': { strength: 5.4, thickness: 0.25, type: 'Fluorocarbone', cost: 60, critChance: 0.06, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Siberia Tresse (11.5kg)': { strength: 11.5, thickness: 0.32, type: 'Tresse', cost: 150, critChance: 0.12, levelRequired: 12, mapName: 'Lac cuivré' },
+  'Siberia DevilBraid Tresse (22kg)': { strength: 22.0, thickness: 0.45, type: 'Tresse', cost: 380, critChance: 0.20, levelRequired: 20, mapName: 'Mer de Norvège' }
 };
 
 const BAITS = {
@@ -91,19 +91,19 @@ const BAITS = {
   'Pain': { category: 'artificiel', cost: 0, addPower: 0.0, levelRequired: 1, mapName: 'Lac aux moustique' },
   'Popper Surface (5g)': { category: 'leurres', cost: 30, addPower: 1.0, levelRequired: 1, mapName: 'Lac aux moustique' },
 
-  'Ver rouge': { category: 'vers', cost: 25, addPower: 2.0, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Vif (Petit Gardon)': { category: 'vifs', cost: 80, addPower: 6.0, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Bouillettes Fraise': { category: 'artificiel', cost: 40, addPower: 1.8, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Shad Souple (12g)': { category: 'leurres', cost: 75, addPower: 3.0, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Ver rouge': { category: 'vers', cost: 25, addPower: 1.5, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Vif (Petit Gardon)': { category: 'vifs', cost: 80, addPower: 3.0, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Bouillettes Fraise': { category: 'artificiel', cost: 40, addPower: 1.5, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Shad Souple (12g)': { category: 'leurres', cost: 75, addPower: 2.0, levelRequired: 3, mapName: 'Rivière Belaya' },
 
-  'Ver de fumier': { category: 'vers', cost: 50, addPower: 5.0, levelRequired: 12, mapName: 'Lac cuivré' },
-  'Vif (Rotengle)': { category: 'vifs', cost: 150, addPower: 12.0, levelRequired: 12, mapName: 'Lac cuivré' },
-  'Pellets Halibut': { category: 'artificiel', cost: 120, addPower: 6.5, levelRequired: 12, mapName: 'Lac cuivré' },
-  'Wobbler Dur (25g)': { category: 'leurres', cost: 160, addPower: 9.0, levelRequired: 12, mapName: 'Lac cuivré' },
+  'Ver de fumier': { category: 'vers', cost: 50, addPower: 2.5, levelRequired: 12, mapName: 'Lac cuivré' },
+  'Vif (Rotengle)': { category: 'vifs', cost: 150, addPower: 6.0, levelRequired: 12, mapName: 'Lac cuivré' },
+  'Pellets Halibut': { category: 'artificiel', cost: 120, addPower: 4.0, levelRequired: 12, mapName: 'Lac cuivré' },
+  'Wobbler Dur (25g)': { category: 'leurres', cost: 160, addPower: 5.0, levelRequired: 12, mapName: 'Lac cuivré' },
 
-  'Vif (Perche)': { category: 'vifs', cost: 300, addPower: 80.0, levelRequired: 20, mapName: 'Mer de Norvège' },
-  'Amorce Marine': { category: 'artificiel', cost: 250, addPower: 60.0, levelRequired: 20, mapName: 'Mer de Norvège' },
-  'Cuillere Spoon (40g)': { category: 'leurres', cost: 320, addPower: 100.0, levelRequired: 20, mapName: 'Mer de Norvège' }
+  'Vif (Perche)': { category: 'vifs', cost: 300, addPower: 8.0, levelRequired: 20, mapName: 'Mer de Norvège' },
+  'Amorce Marine': { category: 'artificiel', cost: 250, addPower: 15.0, levelRequired: 20, mapName: 'Mer de Norvège' },
+  'Cuillere Spoon (40g)': { category: 'leurres', cost: 320, addPower: 20.0, levelRequired: 20, mapName: 'Mer de Norvège' }
 };
 
 const AUTO_FISHERS = {
