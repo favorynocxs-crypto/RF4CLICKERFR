@@ -47,7 +47,7 @@ router.get('/state', authenticate, async (req, res) => {
     }
 
     // Get vivier (fish stringer) contents - unsold fish from catches
-    const vivierRows = await db.all('SELECT id, fish_name, weight, silver_value, xp_value, sold, timestamp FROM catches WHERE user_id = $1 ORDER BY timestamp DESC', [req.user.id]);
+    const vivierRows = await db.all('SELECT id, fish_name, weight, silver_value, xp_value, sold, timestamp FROM catches WHERE user_id = $1 AND (sold = FALSE OR sold IS NULL) ORDER BY timestamp DESC', [req.user.id]);
     const vivier = vivierRows || [];
     const quests = await getQuestsStatus(req.user.id);
 
