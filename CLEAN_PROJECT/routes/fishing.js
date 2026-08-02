@@ -36,17 +36,23 @@ router.post('/bite', authenticate, async (req, res) => {
     let xpMult = 1.0;
     let baseClicks = 10;
     
-    if (weight >= species.blueTrophyW) {
+    // Trophies are rare achievements (Blue Trophy: 0.05% = 0.0005, Trophy: 2% = 0.02)
+    const trophyRoll = Math.random();
+    if (trophyRoll < 0.0005) {
       rarity = 'Trophée Bleu';
+      weight = Number((species.blueTrophyW + Math.random() * (species.maxW - species.blueTrophyW)).toFixed(3));
       valMult = 5.0;
       xpMult = 5.0;
       baseClicks = 60;
-    } else if (weight >= species.trophyW) {
+    } else if (trophyRoll < 0.0205) {
       rarity = 'Trophée';
+      weight = Number((species.trophyW + Math.random() * (species.blueTrophyW - species.trophyW)).toFixed(3));
       valMult = 2.5;
       xpMult = 2.5;
       baseClicks = 25;
     } else {
+      // Normal fish (80% Tagué, 20% Non-Tagué)
+      weight = Number((species.minW + Math.random() * (species.trophyW - species.minW)).toFixed(3));
       if (Math.random() < 0.20) {
         rarity = 'Non-Tagué';
         valMult = 0.4;
