@@ -908,7 +908,7 @@ function renderShop(category) {
         <div class="item-info">
           <h4>${name}</h4>
           <p>${config.desc}</p>
-          <p style="margin-top: 4px; color: var(--accent);">Clic: +${config.addPower} Puissance</p>
+          <p style="margin-top: 4px; color: var(--accent);">Prod: +${config.sps} Silver/s</p>
           <span class="item-badge">Possédé: ${ownedCount} / ${userState.user.has_ameliorateur ? 7 : 5}</span>
         </div>
         <div class="item-card-footer">
