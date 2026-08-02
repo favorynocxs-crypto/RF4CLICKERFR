@@ -117,11 +117,11 @@ const AUTO_FISHERS = {
 };
 
 const AUTO_CLICKER = {
-  'Auto-cliqueur (Niv 1)': { baseCost: 100, addPower: 5.0, desc: 'Augmente la puissance des clics par 5.' },
-  'Auto-cliqueur (Niv 2)': { baseCost: 500, addPower: 25.0, desc: 'Augmente la puissance des clics par 25.' },
-  'Auto-cliqueur (Niv 3)': { baseCost: 2500, addPower: 100.0, desc: 'Augmente la puissance des clics par 100.' },
-  'Auto-cliqueur (Niv 4)': { baseCost: 10000, addPower: 300.0, desc: 'Augmente la puissance des clics par 300.' },
-  'Auto-cliqueur (Niv 5)': { baseCost: 50000, addPower: 1000.0, desc: 'Augmente la puissance des clics par 1000.' }
+  'Auto-cliqueur (Niv 1)': { baseCost: 100, sps: 0.2, desc: 'Génère 0.2 Silver par seconde automatiquement.' },
+  'Auto-cliqueur (Niv 2)': { baseCost: 500, sps: 1.0, desc: 'Génère 1.0 Silver par seconde automatiquement.' },
+  'Auto-cliqueur (Niv 3)': { baseCost: 2500, sps: 4.0, desc: 'Génère 4.0 Silver par seconde automatiquement.' },
+  'Auto-cliqueur (Niv 4)': { baseCost: 10000, sps: 15.0, desc: 'Génère 15.0 Silver par seconde automatiquement.' },
+  'Auto-cliqueur (Niv 5)': { baseCost: 50000, sps: 50.0, desc: 'Génère 50.0 Silver par seconde automatiquement.' }
 };
 
 module.exports = {
