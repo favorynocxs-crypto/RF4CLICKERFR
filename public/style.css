@@ -1,0 +1,1015 @@
+/* Custom variables for theme */
+:root {
+  --bg-main: #060a0d;
+  --bg-card: rgba(16, 22, 26, 0.85);
+  --bg-input: #12181c;
+  --primary: #1D8A99;
+  --primary-hover: #26ADB2;
+  --accent: #E5A93B;
+  --text-main: #E3E9F0;
+  --text-muted: #889BB0;
+  --danger: #D94B4B;
+  --success: #38B273;
+  --border: rgba(29, 138, 153, 0.25);
+  --shadow: rgba(0, 0, 0, 0.6);
+  --font-title: 'Outfit', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: var(--text-main);
+  font-family: var(--font-title);
+  overflow: hidden;
+  height: 100vh;
+  transition: background-image 0.8s ease-in-out;
+}
+
+/* Dark Overlay on the entire page background */
+body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(8, 12, 14, 0.1) 0%, rgba(8, 12, 14, 0.5) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Make sure screens sit on top of background overlay */
+.screen {
+  display: none;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  z-index: 2;
+}
+
+#game-screen {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: background-image 0.8s ease-in-out;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top HUD Bar */
+.hud-bar {
+  background: rgba(16, 22, 26, 0.85);
+  backdrop-filter: blur(15px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+
+/* Left side of HUD (Map Title) */
+.hud-left h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Center of HUD (Silver Counter) */
+.hud-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.silver-counter-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(229, 169, 59, 0.08);
+  border: 1px solid rgba(229, 169, 59, 0.35);
+  padding: 6px 25px;
+  border-radius: 30px;
+  box-shadow: 0 0 15px rgba(229, 169, 59, 0.1);
+}
+
+.silver-icon {
+  display: flex;
+  align-items: center;
+}
+
+#cookie-silver-val {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(229, 169, 59, 0.3);
+}
+
+.silver-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.sps-rate-indicator {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.sps-rate-indicator span {
+  font-family: var(--font-mono);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Right side of HUD (Level & XP) */
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-level-badge {
+  font-family: var(--font-mono);
+  background: rgba(29, 138, 153, 0.15);
+  border: 1px solid var(--border);
+  color: var(--primary-hover);
+  padding: 6px 15px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.xp-hud-bar {
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.xp-progress-bar {
+  background-color: rgba(0, 0, 0, 0.6);
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#xp-progress {
+  background: linear-gradient(90deg, var(--primary) 0%, #3ca0a8 100%);
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+#hud-xp-val {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Authentication Layout */
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  background: radial-gradient(circle at center, #14222D 0%, #080C0E 100%);
+  z-index: 10;
+}
+
+.logo {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.logo .subtitle {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  letter-spacing: 4px;
+  color: var(--text-muted);
+}
+
+.card {
+  background-color: rgba(16, 22, 26, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 15px 30px var(--shadow);
+}
+
+.server-status-loading {
+  background-color: rgba(229, 169, 59, 0.1);
+  border: 1px solid rgba(229, 169, 59, 0.3);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  text-align: center;
+  font-family: var(--font-mono);
+  animation: pulse-status 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-status {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.card h2 {
+  font-size: 1.6rem;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.form-group input {
+  width: 100%;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  color: #fff;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.auth-toggle {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.auth-toggle span {
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.auth-toggle span:hover {
+  text-decoration: underline;
+}
+
+/* Button UI */
+.btn {
+  font-family: var(--font-title);
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  box-shadow: 0 0 10px rgba(29, 138, 153, 0.4);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background-color: #f75d5d;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+}
+
+/* Dashboard Grid Layout (Overlays on top of full-width map background) */
+.game-dashboard {
+  display: grid;
+  grid-template-columns: 340px 1fr 460px;
+  height: calc(100vh - 80px);
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .game-dashboard {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    height: auto;
+  }
+}
+
+/* Sidebars overlays styling */
+.dashboard-sidebar {
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.sidebar-left {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(90deg, rgba(8, 12, 14, 0.8) 0%, rgba(8, 12, 14, 0.3) 100%);
+}
+
+.sidebar-right {
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(270deg, rgba(8, 12, 14, 0.8) 0%, rgba(8, 12, 14, 0.3) 100%);
+}
+
+.panel {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.panel:hover {
+  border-color: rgba(29, 138, 153, 0.55);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(29, 138, 153, 0.08);
+}
+
+.panel h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* Current Gear Setup UI */
+.gear-setup-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gear-setup-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.gear-setup-item:hover {
+  border-color: rgba(29, 138, 153, 0.2);
+}
+
+.setup-gear-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.setup-gear-val {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: right;
+}
+
+/* Auto-fishers helpers list */
+.helpers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.helper-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(18, 24, 28, 0.6);
+  padding: 10px 14px;
+  border-radius: 6px;
+  border-left: 3px solid var(--primary);
+  border-top: 1px solid rgba(255, 255, 255, 0.01);
+}
+
+.helper-info h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.helper-info span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.helper-count {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--primary-hover);
+}
+
+/* CENTER AREA: CLICKER */
+.clicker-game-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+  height: 100%;
+}
+
+/* Click to Cast / Combat Action Card */
+.fishing-zone-card {
+  width: 340px;
+  height: 240px;
+  background: rgba(16, 22, 26, 0.65);
+  border: 2px dashed var(--primary);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 30px rgba(29, 138, 153, 0.1);
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 2;
+}
+
+.fishing-zone-card:hover {
+  border-color: var(--primary-hover);
+  border-style: solid;
+  transform: scale(1.02);
+  box-shadow: 0 20px 45px rgba(29, 138, 153, 0.25);
+}
+
+.fishing-zone-card:active {
+  transform: scale(0.98);
+}
+
+.fishing-zone-status {
+  font-family: var(--font-title);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 2;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+}
+
+/* Attente et Combat progress panels */
+.fishing-progress-container, .fishing-combat-container {
+  width: 85%;
+  z-index: 2;
+  text-align: center;
+  pointer-events: none;
+}
+
+.fishing-progress-label, .combat-clicks-left {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.fishing-progress-bar-wrapper {
+  background-color: rgba(0,0,0,0.5);
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  width: 100%;
+}
+
+.fishing-progress-bar-fill {
+  background: linear-gradient(90deg, var(--primary) 0%, #3ca0a8 100%);
+  height: 100%;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+.fishing-progress-bar-fill.combat-fill {
+  background: linear-gradient(90deg, #e5a93b 0%, #f1c40f 100%);
+  transition: width 0.05s ease-out; /* ultra responsive clicking fill */
+}
+
+/* Combat text styling */
+.combat-fish-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.combat-fish-rarity {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+/* Rarity specific text colors */
+.rarity-non-tague { color: #95a5a6; }
+.rarity-tague { color: #fff; }
+.rarity-trophee { color: #f1c40f; text-shadow: 0 0 8px rgba(241, 196, 15, 0.4); }
+.rarity-trophee-bleu { color: #3498db; text-shadow: 0 0 10px rgba(52, 152, 219, 0.6); }
+
+/* Bite flashing */
+@keyframes card-flash {
+  0%, 100% { border-color: var(--primary); background: rgba(16, 22, 26, 0.65); }
+  50% { border-color: var(--accent); background: rgba(229, 169, 59, 0.25); }
+}
+
+.fishing-zone-card.bite-flash {
+  animation: card-flash 0.4s infinite ease-in-out;
+}
+
+/* Fish cards inside keepnet grids */
+.fish-card {
+  border-left-width: 4px !important;
+}
+.fish-card.non-tague { border-left-color: #95a5a6 !important; opacity: 0.8; }
+.fish-card.tague { border-left-color: #2ecc71 !important; }
+.fish-card.trophee { border-left-color: #f1c40f !important; background: rgba(241, 196, 15, 0.05); }
+.fish-card.trophee-bleu { border-left-color: #3498db !important; background: rgba(52, 152, 219, 0.08); box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
+
+/* P2W premium card styling */
+.p2w-card {
+  border: 1px solid rgba(229, 169, 59, 0.35) !important;
+  background: linear-gradient(135deg, rgba(229, 169, 59, 0.08) 0%, rgba(18, 24, 28, 0.9) 100%) !important;
+}
+.p2w-card:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 20px rgba(229, 169, 59, 0.2);
+}
+
+/* Floating Clicker Text helper */
+.click-effect {
+  position: absolute;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.6rem;
+  pointer-events: none;
+  animation: float-up 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  z-index: 100;
+  text-shadow: 0 0 8px rgba(0,0,0,0.9);
+}
+
+.click-effect.crit {
+  color: var(--danger);
+  font-size: 2rem;
+  text-shadow: 0 0 12px rgba(217, 75, 75, 0.6);
+}
+
+@keyframes float-up {
+  0% { transform: translateY(0) scale(0.85); opacity: 1; }
+  100% { transform: translateY(-120px) scale(1.15); opacity: 0; }
+}
+
+/* RIGHT COLUMN TABS & SHOPS */
+.nav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: #fff;
+  background-color: var(--bg-input);
+}
+
+.tab-btn.active {
+  color: #fff;
+  background-color: var(--primary);
+  box-shadow: 0 0 8px rgba(29, 138, 153, 0.25);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Grid setups */
+.shop-grid, .inventory-grid, .travel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.item-card {
+  background-color: rgba(18, 24, 28, 0.7);
+  border: 1px solid rgba(29, 138, 153, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.item-card:hover {
+  border-color: var(--primary);
+  background-color: rgba(18, 24, 28, 0.95);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.item-info {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.item-info h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  word-wrap: break-word;
+}
+
+.item-info p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  word-wrap: break-word;
+}
+
+.item-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  background-color: var(--bg-main);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.item-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.item-price {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.shop-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.shop-tab-btn {
+  background-color: var(--bg-input);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.shop-tab-btn.active {
+  background-color: rgba(29, 138, 153, 0.2);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Leaderboard */
+.table-container {
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th, .leaderboard-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.85rem;
+}
+
+.leaderboard-table th {
+  background-color: var(--bg-input);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.leaderboard-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Toast popup */
+.toast {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background-color: var(--bg-card);
+  border-left: 4px solid var(--primary);
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  font-size: 0.9rem;
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.danger {
+  border-left-color: var(--danger);
+}
+
+.toast.success {
+  border-left-color: var(--success);
+}
+
+/* Splash/Modal Overlay */
+.splash-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0,0,0,0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.splash-overlay.active {
+  display: flex;
+}
+
+.splash-card {
+  background: radial-gradient(circle at center, #17242E 0%, #0B0F13 100%);
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  padding: 30px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 0 35px rgba(29, 138, 153, 0.3);
+}
+
+.splash-header {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+}
+
+.fish-display {
+  margin: 20px 0;
+}
+
+.fish-graphic svg {
+  animation: fish-swim 3s infinite ease-in-out;
+}
+
+@keyframes fish-swim {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(4deg); }
+}
+
+.splash-rewards {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.reward-item {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  padding: 10px 18px;
+  border-radius: 6px;
+}
+
+.reward-val {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+.reward-lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Image Containers & Fallback Icons for Items and Fishes */
+.card-img-container {
+  width: 100%;
+  height: 90px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.fish-card-img, .gear-card-img {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+.fallback-icon {
+  display: none;
+  font-size: 2.2rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.55;
+  width: 100%;
+  height: 100%;
+}
+
+/* Fishing Technique / Style selector */
+.fishing-style-panel {
+  display: flex;
+  background-color: rgba(16, 22, 26, 0.75);
+  border: 1px solid var(--border);
+  padding: 6px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  gap: 6px;
+  z-index: 2;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.style-select-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.style-select-btn:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.style-select-btn.active {
+  background-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(29, 138, 153, 0.25);
+}
+
+.style-select-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* Lock Overlay for locked map shop items */
+.locked-item {
+  opacity: 0.65;
+  position: relative;
+}
+
+.lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #fff;
+  border-radius: 6px;
+}
