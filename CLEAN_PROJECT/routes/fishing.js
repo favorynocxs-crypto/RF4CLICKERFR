@@ -67,8 +67,8 @@ router.post('/bite', authenticate, async (req, res) => {
       xpMult *= 2.0;
     }
 
-    const silverValue = Number((weight * species.valuePerKg * valMult).toFixed(2));
-    const xpValue = Math.floor(weight * 12 * xpMult);
+    const silverValue = Number(((weight * species.valuePerKg * valMult) / 2.0).toFixed(2));
+    const xpValue = Math.floor((weight * 12 * xpMult) / 2.0);
 
     let mapHPFactor = 1.8;
     if (map === 'Rivière Belaya') mapHPFactor = 6.5;
