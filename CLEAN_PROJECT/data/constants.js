@@ -1,11 +1,11 @@
 const FISH_DATABASE = {
   'Lac aux moustique': [
-    { name: 'Carassassin', rate: 0.20, minW: 0.15, maxW: 3.2, trophyW: 1.8, blueTrophyW: 2.9, valuePerKg: 12 },
-    { name: 'Gardon', rate: 0.25, minW: 0.1, maxW: 2.2, trophyW: 1.2, blueTrophyW: 2.0, valuePerKg: 10 },
+    { name: 'Carassassin', rate: 0.35, minW: 0.15, maxW: 3.2, trophyW: 1.8, blueTrophyW: 2.9, valuePerKg: 12 },
+    { name: 'Gardon', rate: 0.30, minW: 0.1, maxW: 2.2, trophyW: 1.2, blueTrophyW: 2.0, valuePerKg: 10 },
+    { name: 'Brème', rate: 0.20, minW: 0.8, maxW: 7.7, trophyW: 4.4, blueTrophyW: 7.0, valuePerKg: 15 },
     { name: 'Tanche', rate: 0.10, minW: 0.5, maxW: 6.6, trophyW: 4.0, blueTrophyW: 6.0, valuePerKg: 20 },
-    { name: 'Tanche dorée', rate: 0.04, minW: 0.3, maxW: 6.6, trophyW: 4.0, blueTrophyW: 6.0, valuePerKg: 38 },
-    { name: 'Brème', rate: 0.30, minW: 0.8, maxW: 7.7, trophyW: 4.4, blueTrophyW: 7.0, valuePerKg: 15 },
-    { name: 'Midori goi', rate: 0.01, minW: 1.0, maxW: 35.2, trophyW: 25.0, blueTrophyW: 32.0, valuePerKg: 100 }
+    { name: 'Tanche dorée', rate: 0.048, minW: 0.3, maxW: 6.6, trophyW: 4.0, blueTrophyW: 6.0, valuePerKg: 38 },
+    { name: 'Midori goi', rate: 0.002, minW: 1.0, maxW: 35.2, trophyW: 25.0, blueTrophyW: 32.0, valuePerKg: 100 }
   ],
   'Rivière Belaya': [
     { name: 'Brochet', rate: 0.05, minW: 1.0, maxW: 22.0, trophyW: 12.0, blueTrophyW: 20.0, valuePerKg: 22 },
