@@ -645,8 +645,10 @@ async function sellBourriche() {
     });
     const data = await res.json();
     if (res.ok) {
-      showToast(`Poissons vendus ! +${data.silverEarned.toFixed(2)} Silver gagnés ! 💰`, 'success');
+      const added = data.silverAdded !== undefined ? data.silverAdded : (data.silverEarned || 0);
+      showToast(`Poissons vendus ! +${Number(added).toFixed(2)} Silver gagnés ! 💰`, 'success');
       await refreshState();
+      renderBourriche();
     } else {
       showToast(data.error, 'danger');
     }
