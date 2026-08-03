@@ -79,8 +79,8 @@ router.post('/bite', authenticate, async (req, res) => {
     const hpExp = Math.pow(weight, 1.5); 
     const clicksRequired = Math.max(5, Math.floor((baseClicks + (hpExp * 2.5)) * mapHPFactor));
 
-    // Combat time calculated at 20% of clicksRequired (min 8s, max 600s)
-    const combatTime = Math.min(600, Math.max(8, Math.floor(clicksRequired * 0.2)));
+    // Combat time calculated at 35% of clicksRequired (min 3s, max 300s)
+    const combatTime = Math.min(300, Math.max(3, Math.floor(clicksRequired * 0.35)));
     const startTime = Date.now();
 
     const formattedName = `${species.name} (${rarity})`;
