@@ -77,10 +77,17 @@ router.post('/bite', authenticate, async (req, res) => {
     else if (map === 'Mer de Norvège') mapHPFactor = 400.0;
 
     const hpExp = Math.pow(weight, 1.5); 
-    const clicksRequired = Math.max(5, Math.floor((baseClicks + (hpExp * 2.5)) * mapHPFactor));
+    const stats = await getUserStats(req.user.id, req.user);
+    const userSPC = Math.max(1, stats.spc);
 
-    // Combat time calculated at 12% of clicksRequired (min 3s, max 300s) requiring ~8 CPS
-    const combatTime = Math.min(300, Math.max(3, Math.floor(clicksRequired * 0.12)));
+    // Physical clicks required based on weight and map
+    const physicalClicksNeeded = Math.max(5, Math.floor(baseClicks + (hpExp * 2.5) * (mapHPFactor / 3.0)));
+    
+    // Scale total damage needed to match the user's click power (spc)
+    const clicksRequired = physicalClicksNeeded * userSPC;
+
+    // Timer set so user MUST maintain 6 physical clicks per second (physicalClicks / 6)
+    const combatTime = Math.min(300, Math.max(3, Number((physicalClicksNeeded / 6.0).toFixed(1))));
     const startTime = Date.now();
 
     const formattedName = `${species.name} (${rarity})`;
