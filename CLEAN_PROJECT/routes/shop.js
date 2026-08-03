@@ -123,4 +123,42 @@ router.post('/p2w', authenticate, async (req, res) => {
   }
 });
 
+router.post('/repair', authenticate, async (req, res) => {
+  const { type, name } = req.body;
+  if (!['rod', 'reel'].includes(type)) return res.status(400).json({ error: 'Matériel non réparable' });
+
+  const itemDef = type === 'rod' ? RODS[name] : REELS[name];
+  if (!itemDef) return res.status(400).json({ error: 'Objet inconnu' });
+
+  const currentDurability = type === 'rod' ? (req.user.current_rod_durability || 100) : (req.user.current_reel_durability || 100);
+  if (currentDurability >= 100) return res.status(400).json({ error: 'Matériel déjà en parfait état !' });
+
+  const missingPercent = (100 - currentDurability) / 100.0;
+  // Formula requested by user: Cost = (Base Cost) * (Missing Durability %) * 1.5
+  const repairCost = Math.max(1, Math.floor(itemDef.cost * missingPercent * 1.5));
+
+  if (req.user.silver < repairCost) {
+    return res.status(400).json({ error: `Pas assez de Silver ! (${repairCost} Silver requis)` });
+  }
+
+  try {
+    await db.query('BEGIN');
+    await db.query('UPDATE users SET silver = silver - $1 WHERE id = $2', [repairCost, req.user.id]);
+    
+    if (type === 'rod') {
+      await db.query('UPDATE users SET current_rod_durability = 100.0 WHERE id = $1', [req.user.id]);
+    } else {
+      await db.query('UPDATE users SET current_reel_durability = 100.0 WHERE id = $1', [req.user.id]);
+    }
+
+    const updated = await db.get('SELECT silver FROM users WHERE id = $1', [req.user.id]);
+    await db.query('COMMIT');
+
+    res.json({ success: true, message: `${name} réparé à 100% !`, newSilver: updated.silver, repairCost });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Erreur lors de la réparation' });
+  }
+});
+
 module.exports = router;
