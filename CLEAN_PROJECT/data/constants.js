@@ -93,7 +93,7 @@ const REELS = {
 };
 
 const LINES = {
-  'Siberia Mono SS (6kg 150m)': { strength: 6.0, lengthM: 150, type: 'Nylon', cost: 0, critChance: 0.0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'leurre' },
+  'Siberia Mono SS (6kg 150m)': { strength: 6.0, lengthM: 150, type: 'Nylon', cost: 0, critChance: 0.0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'fond' },
   'Siberia Fluorocarbone (5.4kg)': { strength: 5.4, lengthM: 150, type: 'Fluorocarbone', cost: 150, critChance: 0.06, levelRequired: 3, mapName: 'Rivière Belaya', subType: 'fond' },
   'Ultra Braid (18kg 250m)': { strength: 18.0, lengthM: 250, type: 'Tresse', cost: 2500, critChance: 0.20, levelRequired: 10, mapName: 'Lac cuivré', subType: 'fond' },
   'Siberia DevilBraid (24kg 250m)': { strength: 24.0, lengthM: 250, type: 'Tresse', cost: 5000, critChance: 0.30, levelRequired: 15, mapName: 'Lac cuivré', subType: 'leurre' },
