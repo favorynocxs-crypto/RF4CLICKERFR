@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../database');
-const { WATER_BODIES, RODS, REELS, LINES, BAITS, AUTO_FISHERS, AUTO_CLICKER, FISH_DATABASE } = require('../data/constants');
+const { WATER_BODIES, RODS, REELS, LINES, BAITS, AUTO_FISHERS, AUTO_CLICKER, FISH_DATABASE, PASSIVE_SKILLS } = require('../data/constants');
 const { getUserStats, getQuestsStatus, calculateLevel, authenticate } = require('../utils');
 
 const router = express.Router();
@@ -87,7 +87,10 @@ router.get('/state', authenticate, async (req, res) => {
         total_capital: req.user.total_capital || 0,
         total_silver_spent: req.user.total_silver_spent || 0,
         total_time_played: req.user.total_time_played || 0,
-        total_clicks: req.user.total_clicks || 0
+        total_clicks: req.user.total_clicks || 0,
+        crit_chance_bonus: req.user.crit_chance_bonus || 0.0,
+        big_fish_bonus: req.user.big_fish_bonus || 0.0,
+        xp_bonus: req.user.xp_bonus || 0.0
       },
       inventory,
       stats,
@@ -297,6 +300,7 @@ router.post('/style', authenticate, async (req, res) => {
   }
 });
 
+// ...
 router.get('/metadata', (req, res) => {
   res.json({
     rods: RODS,
@@ -305,6 +309,7 @@ router.get('/metadata', (req, res) => {
     baits: BAITS,
     autoFishers: AUTO_FISHERS,
     autoClickers: AUTO_CLICKER,
+    passiveSkills: PASSIVE_SKILLS,
     waterBodies: WATER_BODIES,
     fishDatabase: FISH_DATABASE
   });
@@ -375,6 +380,16 @@ router.post('/admin/reset', async (req, res) => {
   } catch (err) {
     try { await db.query('ROLLBACK'); } catch(e) {}
     res.status(500).json({ error: 'Échec de la réinitialisation globale: ' + err.message });
+  }
+});
+
+// --- Heartbeat Ping for Playtime Tracking ---
+router.post('/ping', authenticate, async (req, res) => {
+  try {
+    await db.query('UPDATE users SET total_time_played = total_time_played + 60, last_active = CURRENT_TIMESTAMP WHERE id = $1', [req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update playtime' });
   }
 });
 

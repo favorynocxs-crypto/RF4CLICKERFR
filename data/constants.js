@@ -1,6 +1,6 @@
 const FISH_DATABASE = {
   'Lac aux moustique': [
-    { name: 'Carassassin', rate: 0.35, minW: 0.15, maxW: 3.2, trophyW: 1.8, blueTrophyW: 2.9, valuePerKg: 4, xpPerKg: 12 },
+    { name: 'Carassin', rate: 0.35, minW: 0.15, maxW: 3.2, trophyW: 1.8, blueTrophyW: 2.9, valuePerKg: 4, xpPerKg: 12 },
     { name: 'Gardon', rate: 0.30, minW: 0.1, maxW: 2.2, trophyW: 1.2, blueTrophyW: 2.0, valuePerKg: 4, xpPerKg: 10 },
     { name: 'Brème', rate: 0.20, minW: 0.8, maxW: 7.7, trophyW: 4.4, blueTrophyW: 7.0, valuePerKg: 5, xpPerKg: 15 },
     { name: 'Tanche', rate: 0.10, minW: 0.5, maxW: 6.6, trophyW: 4.0, blueTrophyW: 6.0, valuePerKg: 10, xpPerKg: 20 },
@@ -18,7 +18,7 @@ const FISH_DATABASE = {
     { name: 'Taïmen', rate: 0.005, minW: 2.0, maxW: 88.0, trophyW: 50.0, blueTrophyW: 80.0, valuePerKg: 50, xpPerKg: 85 }
   ],
   'Lac cuivré': [
-    { name: 'Carassassin', rate: 0.20, minW: 0.2, maxW: 3.2, trophyW: 1.8, blueTrophyW: 2.9, valuePerKg: 8, xpPerKg: 14 },
+    { name: 'Carassin', rate: 0.20, minW: 0.2, maxW: 3.2, trophyW: 1.8, blueTrophyW: 2.9, valuePerKg: 8, xpPerKg: 14 },
     { name: 'F1', rate: 0.18, minW: 1.5, maxW: 4.4, trophyW: 3.0, blueTrophyW: 4.0, valuePerKg: 15, xpPerKg: 35 },
     { name: 'Tanche', rate: 0.15, minW: 0.5, maxW: 6.6, trophyW: 4.0, blueTrophyW: 6.0, valuePerKg: 10, xpPerKg: 22 },
     { name: 'C2 Super Freak', rate: 0.12, minW: 2.5, maxW: 44.0, trophyW: 30.0, blueTrophyW: 40.0, valuePerKg: 18, xpPerKg: 65 },
@@ -150,6 +150,24 @@ const AUTO_CLICKER = {
   'Auto-cliqueur (Niv 5)': { baseCost: 50000, sps: 50.0, levelRequired: 50, desc: 'Génère +50.0 Silver par seconde automatiquement.' }
 };
 
+const PASSIVE_SKILLS = {
+  // Arbre Coup Critique (type: crit)
+  'L\'Art du Ferrage': { type: 'crit', baseCost: 1500, critBonus: 0.02, levelRequired: 10, desc: 'Augmente de 2% vos chances de Coup Critique globales.' },
+  'Lunettes Polarisantes': { type: 'crit', baseCost: 5000, critBonus: 0.05, levelRequired: 20, desc: 'Augmente de 5% vos chances de Coup Critique globales.' },
+  'Détecteur Électronique': { type: 'crit', baseCost: 15000, critBonus: 0.10, levelRequired: 30, desc: 'Augmente de 10% vos chances de Coup Critique globales.' },
+  'Le Maître Ferrage': { type: 'crit', baseCost: 45000, critBonus: 0.20, levelRequired: 40, desc: 'Augmente de 20% vos chances de Coup Critique globales.' },
+  
+  // Arbre Traqueur de Monstres (type: weight)
+  'Appâts aux Phéromones': { type: 'weight', baseCost: 2500, bigFishBonus: 0.05, levelRequired: 15, desc: 'Augmente de 5% vos chances d\'attirer les plus gros poissons.' },
+  'Sondeur Deeper Pro+': { type: 'weight', baseCost: 10000, bigFishBonus: 0.10, levelRequired: 25, desc: 'Augmente de 10% vos chances d\'attirer les plus gros poissons.' },
+  'Licence Pêche au Gros': { type: 'weight', baseCost: 35000, bigFishBonus: 0.25, levelRequired: 40, desc: 'Augmente de 25% vos chances d\'attirer des monstres et Trophées.' },
+
+  // Arbre Sagesse du Pêcheur (type: xp)
+  'Biologie Marine': { type: 'xp', baseCost: 3000, xpBonus: 0.05, levelRequired: 15, desc: 'Augmente de 5% l\'XP gagné à chaque prise.' },
+  'Carnet de Notes': { type: 'xp', baseCost: 12000, xpBonus: 0.10, levelRequired: 30, desc: 'Augmente de 10% l\'XP gagné à chaque prise.' },
+  'Mémoire Photographique': { type: 'xp', baseCost: 30000, xpBonus: 0.25, levelRequired: 45, desc: 'Augmente de 25% l\'XP gagné à chaque prise.' }
+};
+
 module.exports = {
   FISH_DATABASE,
   WATER_BODIES,
@@ -158,5 +176,6 @@ module.exports = {
   LINES,
   BAITS,
   AUTO_FISHERS,
-  AUTO_CLICKER
+  AUTO_CLICKER,
+  PASSIVE_SKILLS
 };

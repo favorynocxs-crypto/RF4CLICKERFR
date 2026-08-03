@@ -199,4 +199,60 @@ router.post('/coffee', authenticate, async (req, res) => {
   }
 });
 
+const { PASSIVE_SKILLS } = require('../data/constants');
+
+router.post('/buy_passive', authenticate, async (req, res) => {
+  const { name } = req.body;
+  const itemData = PASSIVE_SKILLS[name];
+
+  if (!itemData) return res.status(400).json({ error: 'Compétence non trouvée' });
+
+  if (req.user.level < itemData.levelRequired) {
+    return res.status(400).json({ error: `Niveau ${itemData.levelRequired} requis.` });
+  }
+
+  try {
+    await db.query('BEGIN');
+    
+    // Check if already bought
+    const inv = await db.get('SELECT quantity FROM inventory WHERE user_id = $1 AND item_name = $2', [req.user.id, name]);
+    if (inv && inv.quantity > 0) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ error: 'Vous possédez déjà cette compétence.' });
+    }
+
+    if (req.user.silver < itemData.baseCost) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ error: 'Pas assez de Silver' });
+    }
+
+    // Apply permanent bonus to user
+    let updateQuery = 'UPDATE users SET silver = silver - $1, total_silver_spent = total_silver_spent + $1';
+    let params = [itemData.baseCost, req.user.id];
+
+    if (itemData.critBonus) {
+      updateQuery += ', crit_chance_bonus = crit_chance_bonus + $3';
+      params.push(itemData.critBonus);
+    } else if (itemData.bigFishBonus) {
+      updateQuery += ', big_fish_bonus = big_fish_bonus + $3';
+      params.push(itemData.bigFishBonus);
+    } else if (itemData.xpBonus) {
+      updateQuery += ', xp_bonus = xp_bonus + $3';
+      params.push(itemData.xpBonus);
+    }
+    updateQuery += ' WHERE id = $2';
+
+    await db.query(updateQuery, params);
+    await db.query('INSERT INTO inventory (user_id, item_type, item_name, quantity) VALUES ($1, $2, $3, 1)', [req.user.id, 'passive', name]);
+    
+    const updatedUser = await db.get('SELECT silver FROM users WHERE id = $1', [req.user.id]);
+    await db.query('COMMIT');
+    
+    res.json({ success: true, newSilver: updatedUser.silver });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Erreur lors de l\'achat' });
+  }
+});
+
 module.exports = router;

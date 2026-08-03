@@ -20,9 +20,13 @@ router.post('/bite', authenticate, async (req, res) => {
     const userLine = LINES[req.user.current_line];
     const userBait = BAITS[req.user.current_bait];
 
-    if (userLine && userLine.subType && userLine.subType !== activeStyle) {
-      const styleLabel = activeStyle === 'fond' ? 'Pêche de Fond' : (activeStyle === 'leurre' ? 'Pêche au Leurre' : 'Pêche au Vif');
-      return res.status(400).json({ error: `Votre fil équipé (${req.user.current_line}) n'est pas adapté pour la ${styleLabel} ! Changez de fil.` });
+    if (userLine && userLine.subType) {
+      if (activeStyle === 'fond' && userLine.subType === 'leurre') {
+        return res.status(400).json({ error: `Votre fil (${req.user.current_line}) est un fil spécifique pour leurre ! Équipez un fil de fond.` });
+      }
+      if (userLine.subType === 'mer' && map !== 'Mer de Norvège') {
+        return res.status(400).json({ error: `Les fils de mer ne peuvent être utilisés qu'à la Mer de Norvège !` });
+      }
     }
 
     if (userBait) {
@@ -68,6 +72,7 @@ router.post('/bite', authenticate, async (req, res) => {
     let trophyBonusMult = 1.0;
     if (isNight) trophyBonusMult *= 2.0;
     if (isRainy) trophyBonusMult *= 1.5;
+    if (req.user.big_fish_bonus) trophyBonusMult *= (1.0 + req.user.big_fish_bonus);
 
     // Trophies roll (Base: Blue Trophy = 0.05%, Trophy = 2.0%)
     const trophyRoll = Math.random();
@@ -77,7 +82,7 @@ router.post('/bite', authenticate, async (req, res) => {
       valMult = 5.0;
       xpMult = 5.0;
       baseClicks = 60;
-    } else if (trophyRoll < 0.0205) {
+    } else if (trophyRoll < (0.0205 * trophyBonusMult)) {
       rarity = 'Trophée';
       weight = Number((species.trophyW + Math.random() * (species.blueTrophyW - species.trophyW)).toFixed(3));
       valMult = 2.5;
@@ -85,13 +90,20 @@ router.post('/bite', authenticate, async (req, res) => {
       baseClicks = 25;
     } else {
       // Normal fish (80% Tagué, 20% Non-Tagué)
-      weight = Number((species.minW + Math.random() * (species.trophyW - species.minW)).toFixed(3));
+      // Big fish bonus skews random weight higher
+      const weightRandom = req.user.big_fish_bonus ? Math.pow(Math.random(), 1 / (1 + req.user.big_fish_bonus)) : Math.random();
+      weight = Number((species.minW + weightRandom * (species.trophyW - species.minW)).toFixed(3));
+      
       if (Math.random() < 0.20) {
         rarity = 'Non-Tagué';
         valMult = 0.4;
         xpMult = 0.4;
         baseClicks = 5;
       }
+    }
+
+    if (req.user.xp_bonus) {
+      xpMult *= (1.0 + req.user.xp_bonus);
     }
 
     if (species.rate <= 0.05) {
@@ -149,17 +161,17 @@ router.post('/bite', authenticate, async (req, res) => {
 });
 
 router.post('/land', authenticate, async (req, res) => {
-  const { token } = req.body;
+  const { token, timeSpent } = req.body;
   if (!token) return res.status(400).json({ error: 'Missing fish token' });
 
   const data = verifyFishToken(token);
   if (!data || data.userId !== req.user.id) {
     return res.status(400).json({ error: 'Invalid or expired fish token' });
   }
+  
+  const additionalTime = parseInt(timeSpent) || 0;
 
   try {
-    // Removed strict time-based ban check to avoid false positives
-
     await db.query('BEGIN');
     
     const catchResult = await db.get(

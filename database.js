@@ -46,7 +46,10 @@ async function initSchema() {
       has_voyageur BOOLEAN DEFAULT FALSE,
       has_chanceux BOOLEAN DEFAULT FALSE,
       has_ameliorateur BOOLEAN DEFAULT FALSE,
-      has_offline BOOLEAN DEFAULT FALSE
+      has_offline BOOLEAN DEFAULT FALSE,
+      crit_chance_bonus REAL DEFAULT 0.0,
+      big_fish_bonus REAL DEFAULT 0.0,
+      xp_bonus REAL DEFAULT 0.0
     )`);
 
     // Ensure columns exist for legacy databases
@@ -64,6 +67,9 @@ async function initSchema() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS has_chanceux BOOLEAN DEFAULT FALSE`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS has_ameliorateur BOOLEAN DEFAULT FALSE`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS has_offline BOOLEAN DEFAULT FALSE`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS crit_chance_bonus REAL DEFAULT 0.0`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS big_fish_bonus REAL DEFAULT 0.0`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS xp_bonus REAL DEFAULT 0.0`);
 
     // Inventory Table
     await client.query(`CREATE TABLE IF NOT EXISTS inventory (
