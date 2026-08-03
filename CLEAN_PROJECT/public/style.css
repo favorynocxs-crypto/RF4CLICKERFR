@@ -73,14 +73,14 @@ body::before {
 
 /* Top HUD Bar */
 .hud-bar {
-  background: rgba(16, 22, 26, 0.85);
+  background: rgba(16, 22, 26, 0.90);
   backdrop-filter: blur(15px);
   border-bottom: 1px solid var(--border);
-  padding: 0 40px;
+  padding: 10px 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 80px;
+  min-height: 100px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   z-index: 10;
 }
@@ -352,7 +352,7 @@ body::before {
 .game-dashboard {
   display: grid;
   grid-template-columns: 340px 1fr 460px;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 100px);
   position: relative;
   z-index: 2;
   overflow: hidden;
