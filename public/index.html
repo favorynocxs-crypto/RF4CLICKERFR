@@ -137,7 +137,11 @@
           <!-- Combat State UI -->
           <div class="fishing-combat-container" id="combat-container" style="display: none;">
             <div class="combat-fish-title" id="combat-fish-name">UN POISSON COMBAT !</div>
-            <div class="combat-fish-rarity" id="combat-fish-rarity">Commun</div>
+            
+            <!-- Interactive Combat Fish Image -->
+            <div class="combat-fish-img-wrapper" style="margin: 10px auto; height: 110px; display: flex; align-items: center; justify-content: center;">
+              <img id="combat-fish-img" src="" style="max-height: 100px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.8)); transition: transform 0.08s ease;" />
+            </div>
             
             <div class="fishing-progress-bar-wrapper combat-wrapper">
               <div class="fishing-progress-bar-fill combat-fill" id="combat-progress-fill"></div>
