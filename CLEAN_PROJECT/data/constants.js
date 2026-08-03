@@ -73,7 +73,7 @@ const RODS = {
   'Syberia Fortuna Carp 360XH': { maxW: 25.0, cost: 2500, addPower: 15, levelRequired: 15, mapName: 'Lac cuivré', subType: 'fond' },
   'Heaven Creek Barracuda SPM88H': { maxW: 28.0, cost: 3500, addPower: 15, levelRequired: 15, mapName: 'Rivière Belaya', subType: 'spinning' },
   'Kingfisher Legacy Ti 12-2.50': { maxW: 60.0, cost: 10000, addPower: 45, levelRequired: 25, mapName: 'Lac cuivré', subType: 'fond' },
-  'Segun Ultima J-F72HHH': { maxW: 120.0, cost: 10000, addPower: 50, levelRequired: 25, mapName: 'Mer de Norvège', subType: 'spinning' },
+  'Segun Ultima J-F72HHH': { maxW: 120.0, cost: 10000, addPower: 50, levelRequired: 25, mapName: 'Rivière Belaya', subType: 'spinning' },
   'Saltmaster 5000': { maxW: 80.0, cost: 5000, addPower: 25, levelRequired: 20, mapName: 'Mer de Norvège', subType: 'mer' },
   'Poseidon 80': { maxW: 150.0, cost: 15000, addPower: 75, levelRequired: 30, mapName: 'Mer de Norvège', subType: 'mer' },
   'Poseidon Ultra 100': { maxW: 300.0, cost: 50000, addPower: 150, levelRequired: 50, mapName: 'Mer de Norvège', subType: 'mer' }
