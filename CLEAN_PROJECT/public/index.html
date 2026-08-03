@@ -43,9 +43,13 @@
   <div id="game-screen" class="screen">
     <!-- Top HUD Bar (Stretches full width, matching Canva style) -->
     <header class="hud-bar">
-      <!-- Left: Map Name -->
+      <!-- Left: Map Name & Time/Weather -->
       <div class="hud-left">
         <h1 id="current-location-name">Lac aux moustique</h1>
+        <div id="weather-time-widget" style="display:flex; align-items:center; gap:8px; margin-top:4px; font-size:0.85rem; color:var(--text-muted); background:rgba(0,0,0,0.4); padding:3px 8px; border-radius:6px;">
+          <span id="hud-clock-time" style="font-weight:700; color:var(--accent);">🕒 12:00</span>
+          <span id="hud-weather-status">☀️ Ensoleillé</span>
+        </div>
       </div>
       
       <!-- Center: Player's Silver -->
@@ -159,6 +163,7 @@
           <button class="tab-btn" data-tab="tab-leaderboard">Classement</button>
           <button class="tab-btn" data-tab="tab-account">Compte</button>
           <button class="tab-btn" data-tab="tab-stats">Statistiques</button>
+          <button class="tab-btn" data-tab="tab-carnet" style="color:var(--accent);">📘 Carnet</button>
           <button class="tab-btn" data-tab="tab-repair" style="color:var(--warning);">Réparation</button>
         </nav>
 
@@ -320,6 +325,22 @@
                 <span>Clics effectués :</span>
                 <strong id="stat-clicks">0</strong>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Carnet de Collection -->
+        <div id="tab-carnet" class="tab-content">
+          <div class="panel">
+            <h2>📘 Carnet de Collection & Trophées</h2>
+            <div class="shop-tabs" id="carnet-map-filter" style="margin-bottom: 15px;">
+              <button class="shop-tab-btn active" data-carnet-filter="Lac aux moustique">Moustique</button>
+              <button class="shop-tab-btn" data-carnet-filter="Rivière Belaya">Belaya</button>
+              <button class="shop-tab-btn" data-carnet-filter="Lac cuivré">Cuivré</button>
+              <button class="shop-tab-btn" data-carnet-filter="Mer de Norvège">Norvège</button>
+            </div>
+            <div class="inventory-grid" id="carnet-grid">
+              <!-- Dynamically populated -->
             </div>
           </div>
         </div>
