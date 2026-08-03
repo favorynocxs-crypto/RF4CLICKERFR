@@ -611,10 +611,10 @@ async function landFish() {
 
     const data = await res.json();
     if (res.ok) {
-      // Trigger splash reward overlay
-      showToast(`Capturé ! ${data.fishName} (${data.weight.toFixed(3)} kg) 🎉`, 'success');
-      
-      // Force refresh data
+      // Trigger authentic RF4 victory catch overlay modal
+      showCatchOverlay(data);
+
+      // Refresh state
       await refreshState();
       
       if (data.levelUp) {
@@ -622,11 +622,99 @@ async function landFish() {
       }
     } else {
       showToast(data.error, 'danger');
+      resetFishingState();
     }
   } catch (err) {
     showToast("Erreur lors de la capture.", 'danger');
+    resetFishingState();
   }
-  resetFishingState();
+}
+
+let activeCatchData = null;
+
+function showCatchOverlay(data) {
+  activeCatchData = data;
+  const modal = document.getElementById('catch-overlay');
+  if (!modal) {
+    resetFishingState();
+    return;
+  }
+
+  document.getElementById('catch-fish-name').innerText = data.fishName;
+  document.getElementById('catch-fish-weight').innerText = data.weight.toFixed(3);
+  document.getElementById('catch-fish-length').innerText = data.lengthCm || Math.max(12, Math.floor(Math.pow(data.weight, 0.45) * 28));
+
+  // Rarity Badge config
+  const badgeImgEl = document.getElementById('catch-badge-img');
+  const badgeLabelEl = document.getElementById('catch-badge-label');
+  const badgeContainer = document.getElementById('catch-rarity-badge-container');
+
+  const rarity = data.rarity || 'Normal';
+  if (rarity.includes('Trophée Bleu')) {
+    badgeImgEl.src = 'images/badge_blue_trophy.png';
+    badgeLabelEl.innerText = 'Trophée Bleu';
+    badgeContainer.style.background = '#3498db';
+  } else if (rarity.includes('Trophée')) {
+    badgeImgEl.src = 'images/badge_trophy.png';
+    badgeLabelEl.innerText = 'Trophée';
+    badgeContainer.style.background = '#f1c40f';
+  } else if (rarity.includes('Rare')) {
+    badgeImgEl.src = 'images/badge_rare.png';
+    badgeLabelEl.innerText = 'Rare';
+    badgeContainer.style.background = '#8e44ad';
+  } else {
+    badgeImgEl.src = 'images/badge_normal.png';
+    badgeLabelEl.innerText = 'Tagué';
+    badgeContainer.style.background = '#27ae60';
+  }
+
+  // Fish Hero Image
+  const slug = getImageSlug(data.fishName);
+  const fishImgEl = document.getElementById('catch-fish-img');
+  fishImgEl.src = `images/gear/${slug}.png`;
+  fishImgEl.onerror = () => { fishImgEl.src = 'images/gear/carpe_miroir.png'; };
+
+  // Rewards
+  document.getElementById('catch-xp-base').innerText = `+${data.xpGained}`;
+  const releaseBonus = Math.floor(data.xpGained * 0.3);
+  document.getElementById('catch-xp-release').innerText = `+${releaseBonus} XP`;
+  document.getElementById('catch-silver-val').innerText = `+${data.silverValue.toFixed(2)}`;
+
+  // Bind Buttons
+  const keepBtn = document.getElementById('catch-keep-btn');
+  const releaseBtn = document.getElementById('catch-release-btn');
+
+  keepBtn.onclick = () => {
+    modal.style.display = 'none';
+    showToast(`Poisson conservé dans le vivier ! (+${data.xpGained} XP)`, 'success');
+    resetFishingState();
+  };
+
+  releaseBtn.onclick = async () => {
+    modal.style.display = 'none';
+    if (data.catchId) {
+      try {
+        const res = await fetch(`${API_URL}/api/fish/release`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ catchId: data.catchId })
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          showToast(`Poisson relâché ! Bonus de +${resData.bonusXP} XP accordé ! 🌿`, 'success');
+          await refreshState();
+        }
+      } catch (err) {
+        showToast("Erreur lors de la remise à l'eau", "danger");
+      }
+    }
+    resetFishingState();
+  };
+
+  modal.style.display = 'flex';
 }
 
 function resetFishingState() {
