@@ -93,11 +93,11 @@ const REELS = {
 };
 
 const LINES = {
-  'Siberia Mono SS (3.2kg)': { strength: 3.2, thickness: 0.18, type: 'Nylon', cost: 0, critChance: 0.0, levelRequired: 1, mapName: 'Lac aux moustique' },
-  'Siberia Fluorocarbone (5.4kg)': { strength: 5.4, thickness: 0.25, type: 'Fluorocarbone', cost: 150, critChance: 0.06, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'HiPower Braid': { strength: 12.0, thickness: 0.30, type: 'Tresse', cost: 500, critChance: 0.10, levelRequired: 5, mapName: 'Rivière Belaya' },
-  'Ultra Braid': { strength: 25.0, thickness: 0.40, type: 'Tresse', cost: 2500, critChance: 0.20, levelRequired: 10, mapName: 'Lac cuivré' },
-  'Siberia DevilBraid Tresse (22kg)': { strength: 50.0, thickness: 0.50, type: 'Tresse', cost: 5000, critChance: 0.30, levelRequired: 20, mapName: 'Mer de Norvège' }
+  'Siberia Mono SS (6kg 150m)': { strength: 6.0, lengthM: 150, type: 'Nylon', cost: 0, critChance: 0.0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'leurre' },
+  'Siberia Fluorocarbone (5.4kg)': { strength: 5.4, lengthM: 150, type: 'Fluorocarbone', cost: 150, critChance: 0.06, levelRequired: 3, mapName: 'Rivière Belaya', subType: 'fond' },
+  'Ultra Braid (18kg 250m)': { strength: 18.0, lengthM: 250, type: 'Tresse', cost: 2500, critChance: 0.20, levelRequired: 10, mapName: 'Lac cuivré', subType: 'fond' },
+  'Siberia DevilBraid (24kg 250m)': { strength: 24.0, lengthM: 250, type: 'Tresse', cost: 5000, critChance: 0.30, levelRequired: 15, mapName: 'Lac cuivré', subType: 'leurre' },
+  'HiPower Braid (220kg 1000m)': { strength: 220.0, lengthM: 1000, type: 'Tresse', cost: 15000, critChance: 0.50, levelRequired: 25, mapName: 'Mer de Norvège', subType: 'mer' }
 };
 
 const BAITS = {
