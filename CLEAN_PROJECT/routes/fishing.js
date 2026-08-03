@@ -20,9 +20,13 @@ router.post('/bite', authenticate, async (req, res) => {
     const userLine = LINES[req.user.current_line];
     const userBait = BAITS[req.user.current_bait];
 
-    if (userLine && userLine.subType && userLine.subType !== activeStyle) {
-      const styleLabel = activeStyle === 'fond' ? 'Pêche de Fond' : (activeStyle === 'leurre' ? 'Pêche au Leurre' : 'Pêche au Vif');
-      return res.status(400).json({ error: `Votre fil équipé (${req.user.current_line}) n'est pas adapté pour la ${styleLabel} ! Changez de fil.` });
+    if (userLine && userLine.subType) {
+      if (activeStyle === 'fond' && userLine.subType === 'leurre') {
+        return res.status(400).json({ error: `Votre fil (${req.user.current_line}) est un fil spécifique pour leurre ! Équipez un fil de fond.` });
+      }
+      if (userLine.subType === 'mer' && map !== 'Mer de Norvège') {
+        return res.status(400).json({ error: `Les fils de mer ne peuvent être utilisés qu'à la Mer de Norvège !` });
+      }
     }
 
     if (userBait) {
