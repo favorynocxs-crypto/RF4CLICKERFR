@@ -161,4 +161,42 @@ router.post('/repair', authenticate, async (req, res) => {
   }
 });
 
+router.post('/coffee', authenticate, async (req, res) => {
+  const { type } = req.body;
+  let cost = 0;
+  let restoreAmount = 0;
+
+  if (type === 'cup') {
+    cost = 50;
+    restoreAmount = 20.0;
+  } else if (type === 'thermos') {
+    cost = 200;
+    restoreAmount = 100.0;
+  } else {
+    return res.status(400).json({ error: 'Type de café inconnu' });
+  }
+
+  if (req.user.silver < cost) {
+    return res.status(400).json({ error: `Pas assez de Silver ! (${cost} Silver requis)` });
+  }
+
+  const currentEnergy = req.user.energy !== undefined ? req.user.energy : 100.0;
+  if (currentEnergy >= 100.0) {
+    return res.status(400).json({ error: 'Votre énergie est déjà au maximum !' });
+  }
+
+  try {
+    await db.query('BEGIN');
+    const newEnergy = Math.min(100.0, Number((currentEnergy + restoreAmount).toFixed(1)));
+    await db.query('UPDATE users SET silver = silver - $1, energy = $2 WHERE id = $3', [cost, newEnergy, req.user.id]);
+    const updated = await db.get('SELECT silver, energy FROM users WHERE id = $1', [req.user.id]);
+    await db.query('COMMIT');
+
+    res.json({ success: true, message: `Café consommé ! Énergie: ${updated.energy}%`, newSilver: updated.silver, newEnergy: updated.energy });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Échec achat café' });
+  }
+});
+
 module.exports = router;
