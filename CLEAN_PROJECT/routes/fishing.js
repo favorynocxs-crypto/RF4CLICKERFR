@@ -97,8 +97,8 @@ router.post('/bite', authenticate, async (req, res) => {
     // Scale total damage needed to match the user's click power (spc)
     const clicksRequired = physicalClicksNeeded * userSPC;
 
-    // Timer set so user MUST maintain 6 physical clicks per second (physicalClicks / 6)
-    const combatTime = Math.min(300, Math.max(3, Number((physicalClicksNeeded / 6.0).toFixed(1))));
+    // Timer set so user MUST maintain 4 physical clicks per second (physicalClicks / 4.0)
+    const combatTime = Math.min(300, Math.max(3, Number((physicalClicksNeeded / 4.0).toFixed(1))));
     const startTime = Date.now();
 
     const formattedName = `${species.name} (${rarity})`;
