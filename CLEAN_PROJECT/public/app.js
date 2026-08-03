@@ -204,7 +204,16 @@ function startLoops() {
     } catch (e) {}
   }, 10000);
 
-  // 3. Periodic leaderboard updates
+  // 3. Periodic leaderboard & live clock updates
+  setInterval(() => {
+    if (!token) return;
+    const tw = getInGameTimeAndWeather();
+    const clockEl = document.getElementById('hud-clock-time');
+    const weatherEl = document.getElementById('hud-weather-status');
+    if (clockEl) clockEl.innerText = tw.timeStr;
+    if (weatherEl) weatherEl.innerText = tw.weatherStr;
+  }, 1000);
+
   setInterval(() => {
     if (token) {
       loadLeaderboard();
