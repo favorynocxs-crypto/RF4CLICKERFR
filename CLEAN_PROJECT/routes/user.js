@@ -310,4 +310,72 @@ router.get('/metadata', (req, res) => {
   });
 });
 
+router.post('/admin/reset', async (req, res) => {
+  const { secretKey } = req.body;
+  if (secretKey !== 'RF4_RESET_2026') {
+    return res.status(403).json({ error: 'Secret Key invalide' });
+  }
+
+  try {
+    await db.query('BEGIN');
+    
+    // Reset all users data to Level 1, 50 Silver, default gear, full energy & durability
+    await db.query(`
+      UPDATE users SET 
+        silver = 50.0,
+        xp = 0,
+        level = 1,
+        energy = 100.0,
+        current_water_body = 'Lac aux moustique',
+        current_rod = 'Kama Comfort FD360',
+        current_reel = 'Express Fishing Skarp 2 2000S',
+        current_line = 'Siberia Mono SS (6kg 150m)',
+        current_bait = 'Pain',
+        current_style = 'fond',
+        current_rod_durability = 100.0,
+        current_reel_durability = 100.0,
+        total_clicks = 0,
+        total_silver_spent = 0.0,
+        total_capital = 50.0,
+        total_catches = 0
+    `);
+
+    // Wipe inventory (purchased gear & auto fishers)
+    await db.query('DELETE FROM inventory');
+
+    // Re-insert default starting gear for every existing user
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'rod', 'Kama Comfort FD360', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'reel', 'Express Fishing Skarp 2 2000S', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'line', 'Siberia Mono SS (6kg 150m)', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'bait', 'Pain', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+
+    // Empty all catches (Bourriche/Vivier) and quests
+    await db.query('DELETE FROM catches');
+    await db.query('DELETE FROM vivier');
+    await db.query('DELETE FROM user_quests');
+
+    await db.query('COMMIT');
+    res.json({ success: true, message: 'Réinitialisation globale de tous les joueurs effectuée avec succès !' });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Échec de la réinitialisation globale: ' + err.message });
+  }
+});
+
 module.exports = router;
