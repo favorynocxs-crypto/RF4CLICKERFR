@@ -71,7 +71,7 @@ const RODS = {
   'Syberia Model Two FD420H': { maxW: 12.0, cost: 500, addPower: 5, levelRequired: 5, mapName: 'Lac aux moustique', subType: 'fond' },
   'Syberia Model One S98H': { maxW: 14.0, cost: 500, addPower: 5, levelRequired: 5, mapName: 'Rivière Belaya', subType: 'spinning' },
   'Syberia Fortuna Carp 360XH': { maxW: 25.0, cost: 2500, addPower: 15, levelRequired: 15, mapName: 'Lac cuivré', subType: 'fond' },
-  'Heaven Creek Barracuda SPM88H': { maxW: 28.0, cost: 2500, addPower: 15, levelRequired: 15, mapName: 'Rivière Belaya', subType: 'spinning' },
+  'Heaven Creek Barracuda SPM88H': { maxW: 28.0, cost: 3500, addPower: 15, levelRequired: 15, mapName: 'Rivière Belaya', subType: 'spinning' },
   'Kingfisher Legacy Ti 12-2.50': { maxW: 60.0, cost: 10000, addPower: 45, levelRequired: 25, mapName: 'Lac cuivré', subType: 'fond' },
   'Segun Ultima J-F72HHH': { maxW: 120.0, cost: 10000, addPower: 50, levelRequired: 25, mapName: 'Mer de Norvège', subType: 'spinning' },
   'Saltmaster 5000': { maxW: 80.0, cost: 5000, addPower: 25, levelRequired: 20, mapName: 'Mer de Norvège', subType: 'mer' },
