@@ -158,6 +158,7 @@ async function refreshState() {
     renderBourriche();
     renderQuests();
     renderAccount();
+    renderCarnet();
 
     // Check offline progress
     if (data.offline && data.offline.silverEarned > 0) {
@@ -203,7 +204,16 @@ function startLoops() {
     } catch (e) {}
   }, 10000);
 
-  // 3. Periodic leaderboard updates
+  // 3. Periodic leaderboard & live clock updates
+  setInterval(() => {
+    if (!token) return;
+    const tw = getInGameTimeAndWeather();
+    const clockEl = document.getElementById('hud-clock-time');
+    const weatherEl = document.getElementById('hud-weather-status');
+    if (clockEl) clockEl.innerText = tw.timeStr;
+    if (weatherEl) weatherEl.innerText = tw.weatherStr;
+  }, 1000);
+
   setInterval(() => {
     if (token) {
       loadLeaderboard();
@@ -219,9 +229,47 @@ const WATER_BODIES_BG = {
   'Mer de Norvège': 'map_norvege.jpg'
 };
 
+// In-game time system: 1 hour IRL (3600s) = 24 hours In-Game (86400s) -> 1s IRL = 24s In-Game
+function getInGameTimeAndWeather() {
+  const now = new Date();
+  const secondsInHour = (now.getMinutes() * 60) + now.getSeconds() + (now.getMilliseconds() / 1000);
+  const totalInGameSeconds = (secondsInHour * 24) % 86400;
+  
+  const inGameHours = Math.floor(totalInGameSeconds / 3600);
+  const inGameMinutes = Math.floor((totalInGameSeconds % 3600) / 60);
+
+  const formattedHours = String(inGameHours).padStart(2, '0');
+  const formattedMinutes = String(inGameMinutes).padStart(2, '0');
+
+  const isNight = inGameHours >= 21 || inGameHours < 5;
+
+  // Weather pattern based on 20-min cycles
+  const cycleIndex = Math.floor(now.getMinutes() / 15);
+  let weatherText = '☀️ Ensoleillé';
+  if (cycleIndex === 1) weatherText = '☁️ Nuageux';
+  else if (cycleIndex === 2) weatherText = '🌧️ Pluvieux';
+  else if (cycleIndex === 3) weatherText = '🌫️ Brumeux';
+
+  if (isNight) weatherText = `🌙 Nuit (${weatherText.split(' ')[1] || 'Calme'})`;
+
+  return {
+    timeStr: `🕒 ${formattedHours}:${formattedMinutes}`,
+    weatherStr: weatherText,
+    isNight,
+    isRainy: weatherText.includes('Pluvieux')
+  };
+}
+
 function updateHUD() {
   if (!userState) return;
   const { user } = userState;
+  
+  // Update Clock & Weather Widget
+  const tw = getInGameTimeAndWeather();
+  const clockEl = document.getElementById('hud-clock-time');
+  const weatherEl = document.getElementById('hud-weather-status');
+  if (clockEl) clockEl.innerText = tw.timeStr;
+  if (weatherEl) weatherEl.innerText = tw.weatherStr;
   
   cookieSilverVal.innerText = currentSilver.toFixed(2);
   cookieSpsVal.innerText = spsRate.toFixed(2);
@@ -235,12 +283,22 @@ function updateHUD() {
   document.getElementById('game-screen').style.backgroundImage = `url("${encodedPath}")`;
 
   // XP calculation
-  const currentLvlXP = (user.level - 1) * (user.level - 1) * 100;
-  const nextLvlXP = user.level * user.level * 100;
+  const currentLvlXP = (user.level - 1) * (user.level - 1) * 250;
+  const nextLvlXP = user.level * user.level * 250;
   const progressPercent = Math.min(100, ((user.xp - currentLvlXP) / (nextLvlXP - currentLvlXP)) * 100);
   
   xpProgress.style.width = `${progressPercent}%`;
   hudXpVal.innerText = `${user.xp} / ${nextLvlXP} XP`;
+
+  // Energy bar HUD update
+  const energyVal = user.energy !== undefined ? user.energy : 100.0;
+  const energyProgress = document.getElementById('energy-progress');
+  const hudEnergyVal = document.getElementById('hud-energy-val');
+  if (energyProgress && hudEnergyVal) {
+    energyProgress.style.width = `${Math.max(0, Math.min(100, energyVal))}%`;
+    energyProgress.style.background = energyVal < 30.0 ? 'var(--danger)' : 'var(--success)';
+    hudEnergyVal.innerText = `⚡ ${energyVal.toFixed(1)}%`;
+  }
 
   // Setup items
   setupRod.innerText = user.current_rod;
@@ -329,6 +387,7 @@ function setupTabs() {
       if (target === 'tab-map') renderMapInfo();
       if (target === 'tab-stats') renderStats();
       if (target === 'tab-repair') renderRepair();
+      if (target === 'tab-map-challenges') renderMapChallenges();
     });
   });
 }
@@ -506,8 +565,24 @@ function updateCombatUI() {
   }
 }
 
+let userClickTimestamps = [];
+
 function dealDamage(e) {
   if (fishingState !== 'combat' || !activeFish) return;
+
+  const now = Date.now();
+  userClickTimestamps.push(now);
+  // Keep only clicks within the last 1000ms (1 second)
+  userClickTimestamps = userClickTimestamps.filter(t => now - t <= 1000);
+
+  // If CPS > 15, disconnect user directly
+  if (userClickTimestamps.length > 15) {
+    userClickTimestamps = [];
+    resetFishingState();
+    showToast("Vitesse de clic excessive (+15 CPS) ! Déconnexion de sécurité.", "danger");
+    logout();
+    return;
+  }
 
   // Clicks dealt is increased by click power (spcRate)
   combatClicksDealt += spcRate;
@@ -546,10 +621,10 @@ async function landFish() {
 
     const data = await res.json();
     if (res.ok) {
-      // Trigger splash reward overlay
-      showToast(`Capturé ! ${data.fishName} (${data.weight.toFixed(3)} kg) 🎉`, 'success');
-      
-      // Force refresh data
+      // Trigger authentic RF4 victory catch overlay modal
+      showCatchOverlay(data);
+
+      // Refresh state
       await refreshState();
       
       if (data.levelUp) {
@@ -557,11 +632,99 @@ async function landFish() {
       }
     } else {
       showToast(data.error, 'danger');
+      resetFishingState();
     }
   } catch (err) {
     showToast("Erreur lors de la capture.", 'danger');
+    resetFishingState();
   }
-  resetFishingState();
+}
+
+let activeCatchData = null;
+
+function showCatchOverlay(data) {
+  activeCatchData = data;
+  const modal = document.getElementById('catch-overlay');
+  if (!modal) {
+    resetFishingState();
+    return;
+  }
+
+  document.getElementById('catch-fish-name').innerText = data.fishName;
+  document.getElementById('catch-fish-weight').innerText = data.weight.toFixed(3);
+  document.getElementById('catch-fish-length').innerText = data.lengthCm || Math.max(12, Math.floor(Math.pow(data.weight, 0.45) * 28));
+
+  // Rarity Badge config
+  const badgeImgEl = document.getElementById('catch-badge-img');
+  const badgeLabelEl = document.getElementById('catch-badge-label');
+  const badgeContainer = document.getElementById('catch-rarity-badge-container');
+
+  const rarity = data.rarity || 'Normal';
+  if (rarity.includes('Trophée Bleu')) {
+    badgeImgEl.src = 'images/badge_blue_trophy.png';
+    badgeLabelEl.innerText = 'Trophée Bleu';
+    badgeContainer.style.background = '#3498db';
+  } else if (rarity.includes('Trophée')) {
+    badgeImgEl.src = 'images/badge_trophy.png';
+    badgeLabelEl.innerText = 'Trophée';
+    badgeContainer.style.background = '#f1c40f';
+  } else if (rarity.includes('Rare')) {
+    badgeImgEl.src = 'images/badge_rare.png';
+    badgeLabelEl.innerText = 'Rare';
+    badgeContainer.style.background = '#8e44ad';
+  } else {
+    badgeImgEl.src = 'images/badge_normal.png';
+    badgeLabelEl.innerText = 'Tagué';
+    badgeContainer.style.background = '#27ae60';
+  }
+
+  // Fish Hero Image
+  const slug = getImageSlug(data.fishName);
+  const fishImgEl = document.getElementById('catch-fish-img');
+  fishImgEl.src = `images/gear/${slug}.png`;
+  fishImgEl.onerror = () => { fishImgEl.src = 'images/gear/carpe_miroir.png'; };
+
+  // Rewards
+  document.getElementById('catch-xp-base').innerText = `+${data.xpGained}`;
+  const releaseBonus = Math.floor(data.xpGained * 0.3);
+  document.getElementById('catch-xp-release').innerText = `+${releaseBonus} XP`;
+  document.getElementById('catch-silver-val').innerText = `+${data.silverValue.toFixed(2)}`;
+
+  // Bind Buttons
+  const keepBtn = document.getElementById('catch-keep-btn');
+  const releaseBtn = document.getElementById('catch-release-btn');
+
+  keepBtn.onclick = () => {
+    modal.style.display = 'none';
+    showToast(`Poisson conservé dans le vivier ! (+${data.xpGained} XP)`, 'success');
+    resetFishingState();
+  };
+
+  releaseBtn.onclick = async () => {
+    modal.style.display = 'none';
+    if (data.catchId) {
+      try {
+        const res = await fetch(`${API_URL}/api/fish/release`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ catchId: data.catchId })
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          showToast(`Poisson relâché ! Bonus de +${resData.bonusXP} XP accordé ! 🌿`, 'success');
+          await refreshState();
+        }
+      } catch (err) {
+        showToast("Erreur lors de la remise à l'eau", "danger");
+      }
+    }
+    resetFishingState();
+  };
+
+  modal.style.display = 'flex';
 }
 
 function resetFishingState() {
@@ -598,50 +761,47 @@ function renderBourriche() {
 
   const fishList = userState.vivier;
   const unsoldFishes = fishList.filter(f => !f.sold);
-  bourricheCountLbl.innerText = `${fishList.length} poisson(s) (dont ${unsoldFishes.length} à vendre)`;
+  bourricheCountLbl.innerText = `${unsoldFishes.length} poisson(s) à vendre`;
 
-  if (fishList.length === 0) {
+  if (unsoldFishes.length === 0) {
     bourricheGrid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Bourriche vide. Allez pêcher !</p>';
     return;
   }
 
-  fishList.forEach(fish => {
+  unsoldFishes.forEach(fish => {
     const card = document.createElement('div');
     
-    // Class names matching rarity: Non-Tagué, Tagué, Trophée, Trophée Bleu
     let cardClass = 'item-card fish-card';
     let labelClass = 'rarity-tague';
-    if (fish.fish_name.includes('(Trophée Bleu)')) { cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; }
-    else if (fish.fish_name.includes('(Trophée)')) { cardClass += ' trophee'; labelClass = 'rarity-trophee'; }
-    else if (fish.fish_name.includes('(Non-Tagué)')) { cardClass += ' non-tague'; labelClass = 'rarity-non-tague'; }
-    else { cardClass += ' tague'; labelClass = 'rarity-tague'; }
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+
+    if (fish.fish_name.includes('(Trophée Bleu)')) { 
+      cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
+    } else if (fish.fish_name.includes('(Trophée)')) { 
+      cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
+    } else if (fish.fish_name.includes('(Espèce Rare)')) {
+      badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    }
     
     const baseName = getBaseFishName(fish.fish_name);
     const slug = getImageSlug(baseName);
 
-    if (fish.sold) {
-      cardClass += ' sold-fish';
-    }
-
     card.className = cardClass;
     card.innerHTML = `
-      <div class="card-img-container" ${fish.sold ? 'style="opacity: 0.5; filter: grayscale(100%);"' : ''}>
+      <div class="card-img-container" style="position:relative;">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div class="fallback-icon fish-fallback">🐟</div>
+        <img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
         <p>Poids: ${fish.weight.toFixed(3)} kg</p>
-        <p>Taille: ${Math.floor(Math.pow(fish.weight, 1/3) * 35)} cm</p>
         <p style="color:var(--accent); font-weight:600; margin-top:3px;">
-          ${fish.sold ? 'VENDU' : `Valeur: ${fish.silver_value.toFixed(2)} Silver`}
+          Valeur: ${fish.silver_value.toFixed(2)} Silver
         </p>
       </div>
     `;
-    if (fish.sold) {
-      card.style.opacity = '0.7';
-      card.style.order = '999'; // Push to bottom (requires flex/grid reordering, optional)
-    }
     bourricheGrid.appendChild(card);
   });
 }
@@ -655,8 +815,10 @@ async function sellBourriche() {
     });
     const data = await res.json();
     if (res.ok) {
-      showToast(`Poissons vendus ! +${data.silverEarned.toFixed(2)} Silver gagnés ! 💰`, 'success');
+      const added = data.silverAdded !== undefined ? data.silverAdded : (data.silverEarned || 0);
+      showToast(`Poissons vendus ! +${Number(added).toFixed(2)} Silver gagnés ! 💰`, 'success');
       await refreshState();
+      renderBourriche();
     } else {
       showToast(data.error, 'danger');
     }
@@ -732,7 +894,8 @@ function renderInventory() {
   grid.innerHTML = '';
   if (!userState) return;
 
-  const gearItems = userState.inventory.filter(i => i.item_type !== 'auto_fisher');
+  // Only show equipable gear: Rods, Reels, Lines, Baits
+  const gearItems = userState.inventory.filter(i => ['rod', 'reel', 'line', 'bait'].includes(i.item_type));
 
   if (gearItems.length === 0) {
     grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; grid-column:1/-1;">Sac vide.</p>';
@@ -750,12 +913,23 @@ function renderInventory() {
       (item.item_type === 'bait' && userState.user.current_bait === item.item_name);
 
     let details = '';
-    if (item.item_type === 'rod') details = `Force: +${metadata.rods[item.item_name].addPower}`;
-    else if (item.item_type === 'reel') details = `Mult: x${metadata.reels[item.item_name].multiplier}`;
-    else if (item.item_type === 'line') details = `Crit: +${Math.round(metadata.lines[item.item_name].critChance * 100)}%`;
-    else if (item.item_type === 'bait') details = `Attraction: +${metadata.baits[item.item_name].addPower}`;
+    let itemConfig = null;
+    if (metadata) {
+      if (item.item_type === 'rod') itemConfig = metadata.rods[item.item_name];
+      else if (item.item_type === 'reel') itemConfig = metadata.reels[item.item_name];
+      else if (item.item_type === 'line') itemConfig = metadata.lines[item.item_name];
+      else if (item.item_type === 'bait') itemConfig = metadata.baits[item.item_name];
+    }
+
+    if (itemConfig) {
+      if (item.item_type === 'rod') details = `Force Clic: +${itemConfig.addPower}`;
+      else if (item.item_type === 'reel') details = `Multiplier: x${itemConfig.multiplier}`;
+      else if (item.item_type === 'line') details = `Résistance: ${itemConfig.strength}kg | Longueur: ${itemConfig.lengthM || 150}m`;
+      else if (item.item_type === 'bait') details = `Attraction: +${itemConfig.addPower}`;
+    }
 
     const slug = getImageSlug(item.item_name);
+    const escapedName = item.item_name.replace(/'/g, "\\'");
 
     card.innerHTML = `
       <div class="card-img-container">
@@ -768,7 +942,7 @@ function renderInventory() {
         <p style="margin-top: 4px;">${details}</p>
       </div>
       <div class="item-card-footer">
-        ${isEquipped ? '<span style="color:var(--success); font-weight:600; font-size:0.8rem;">ÉQUIPÉ</span>' : `<button class="btn btn-primary btn-sm" onclick="equipItem('${item.item_type}', '${item.item_name}')">Équiper</button>`}
+        ${isEquipped ? '<span style="color:var(--success); font-weight:600; font-size:0.8rem;">ÉQUIPÉ</span>' : `<button class="btn btn-primary btn-sm" onclick="equipItem('${item.item_type}', '${escapedName}')">Équiper</button>`}
       </div>
     `;
     grid.appendChild(card);
@@ -813,15 +987,16 @@ function renderOwnedHelpers() {
   ownedHelpersList.innerHTML = '';
   if (!userState) return;
 
-  const helpers = userState.inventory.filter(i => i.item_type === 'auto_fisher');
+  const helpers = userState.inventory.filter(i => i.item_type === 'auto_fisher' || i.item_type === 'auto_clicker');
 
   if (helpers.length === 0) {
-    ownedHelpersList.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 10px;">Aucun auto-pêcheur actif.</p>';
+    ownedHelpersList.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 10px;">Aucune amélioration active.</p>';
     return;
   }
 
   helpers.forEach(item => {
-    const config = metadata.autoFishers[item.item_name];
+    const config = metadata.autoFishers[item.item_name] || metadata.autoClickers[item.item_name];
+    if (!config) return;
     const totalSPS = item.quantity * config.sps * userState.stats.lakeMult;
     
     const card = document.createElement('div');
@@ -847,10 +1022,55 @@ shopTabs.forEach(tab => {
   });
 });
 
-function renderShop(category) {
+let currentSubFilter = 'all';
+
+function renderShop(category, subFilter = 'all') {
   const grid = document.getElementById('shop-grid');
+  const subFilterContainer = document.getElementById('shop-subfilter-tabs');
   grid.innerHTML = '';
   if (!metadata || !userState) return;
+
+  // Manage subfilters visibility
+  if (['rods', 'reels', 'lines', 'leurres'].includes(category)) {
+    subFilterContainer.style.display = 'flex';
+    subFilterContainer.innerHTML = '';
+    
+    let subTypes = [];
+    if (category === 'rods' || category === 'reels') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'fond', label: 'Pêche au fond' },
+        { id: 'spinning', label: 'Spinning' },
+        { id: 'mer', label: 'Pêche en Mer' }
+      ];
+    } else if (category === 'lines') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'fond', label: 'Fils de Fond' },
+        { id: 'leurre', label: 'Fils de Leurres' },
+        { id: 'mer', label: 'Fils de Mer' }
+      ];
+    } else if (category === 'leurres') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'dure', label: 'Leurres durs' },
+        { id: 'surface', label: 'Surface' },
+        { id: 'souple', label: 'Leurres souples' },
+        { id: 'cuillere', label: 'Cuillères' },
+        { id: 'mer', label: 'Leurres de Mer' }
+      ];
+    }
+
+    subTypes.forEach(st => {
+      const btn = document.createElement('button');
+      btn.className = `shop-tab-btn ${subFilter === st.id ? 'active' : ''}`;
+      btn.innerText = st.label;
+      btn.onclick = () => renderShop(category, st.id);
+      subFilterContainer.appendChild(btn);
+    });
+  } else {
+    subFilterContainer.style.display = 'none';
+  }
 
   if (category === 'auto') {
     // Render Auto Fishers
@@ -859,24 +1079,31 @@ function renderShop(category) {
       const inventoryItem = userState.inventory.find(i => i.item_name === name);
       const ownedCount = inventoryItem ? inventoryItem.quantity : 0;
       const currentCost = Math.floor(config.baseCost * Math.pow(1.15, ownedCount));
+      const userLevel = userState.user.level;
+      const isLocked = config.levelRequired && userLevel < config.levelRequired;
 
       const card = document.createElement('div');
-      card.className = 'item-card';
+      card.className = `item-card ${isLocked ? 'locked-item' : ''}`;
       const slug = getImageSlug(name);
       card.innerHTML = `
         <div class="card-img-container">
           <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
           <div class="fallback-icon gear-fallback">🤖</div>
+          ${isLocked ? '<div class="lock-overlay">🔒</div>' : ''}
         </div>
         <div class="item-info">
           <h4>${name}</h4>
           <p>${config.desc}</p>
           <p style="margin-top: 4px; color: var(--primary);">Prod: +${config.sps} Silver/s</p>
           <span class="item-badge">Possédé: ${ownedCount} / ${userState.user.has_ameliorateur ? 7 : 5}</span>
+          ${isLocked ? `<p style="color:var(--danger); font-size:0.75rem; font-weight:600; margin-top:4px;">🔒 Déblocage : Niveau ${config.levelRequired}</p>` : ''}
         </div>
         <div class="item-card-footer">
           <span class="item-price">${currentCost} 🪙</span>
-          <button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name}', 'auto_fisher')">Acheter</button>
+          ${isLocked ?
+            `<button class="btn btn-sm" disabled style="background:rgba(255,255,255,0.03); color:var(--text-muted); cursor:not-allowed;">Niv ${config.levelRequired}</button>` :
+            `<button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name.replace(/'/g, "\\'")}', 'auto_fisher')">Acheter</button>`
+          }
         </div>
       `;
       grid.appendChild(card);
@@ -888,24 +1115,55 @@ function renderShop(category) {
       const inventoryItem = userState.inventory.find(i => i.item_name === name);
       const ownedCount = inventoryItem ? inventoryItem.quantity : 0;
       const currentCost = Math.floor(config.baseCost * Math.pow(1.15, ownedCount));
+      const userLevel = userState.user.level;
+      const isLocked = config.levelRequired && userLevel < config.levelRequired;
 
       const card = document.createElement('div');
-      card.className = 'item-card';
+      card.className = `item-card ${isLocked ? 'locked-item' : ''}`;
       const slug = getImageSlug(name);
       card.innerHTML = `
         <div class="card-img-container">
           <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
           <div class="fallback-icon gear-fallback">🖱️</div>
+          ${isLocked ? '<div class="lock-overlay">🔒</div>' : ''}
         </div>
         <div class="item-info">
           <h4>${name}</h4>
           <p>${config.desc}</p>
-          <p style="margin-top: 4px; color: var(--accent);">Clic: +${config.addPower} Puissance</p>
+          <p style="margin-top: 4px; color: var(--accent);">Prod: +${config.sps} Silver/s</p>
           <span class="item-badge">Possédé: ${ownedCount} / ${userState.user.has_ameliorateur ? 7 : 5}</span>
+          ${isLocked ? `<p style="color:var(--danger); font-size:0.75rem; font-weight:600; margin-top:4px;">🔒 Déblocage : Niveau ${config.levelRequired}</p>` : ''}
         </div>
         <div class="item-card-footer">
           <span class="item-price">${currentCost} 🪙</span>
-          <button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name}', 'auto_clicker')">Acheter</button>
+          ${isLocked ?
+            `<button class="btn btn-sm" disabled style="background:rgba(255,255,255,0.03); color:var(--text-muted); cursor:not-allowed;">Niv ${config.levelRequired}</button>` :
+            `<button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name.replace(/'/g, "\\'")}', 'auto_clicker')">Acheter</button>`
+          }
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  } else if (category === 'coffee') {
+    // Render Coffee items
+    const coffeeItems = [
+      { id: 'cup', name: '☕ Tasse de Café', desc: 'Restaure +30% d\'énergie immédiatement.', price: 15, icon: '☕' },
+      { id: 'thermos', name: '🧴 Thermos de Café', desc: 'Restaure +100% d\'énergie immédiatement (énergie max).', price: 45, icon: '🧴' }
+    ];
+    coffeeItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `
+        <div class="card-img-container">
+          <div class="fallback-icon" style="display:flex; font-size:2.5rem;">${item.icon}</div>
+        </div>
+        <div class="item-info">
+          <h4>${item.name}</h4>
+          <p>${item.desc}</p>
+        </div>
+        <div class="item-card-footer">
+          <span class="item-price">${item.price} 🪙</span>
+          <button class="btn btn-primary btn-sm" onclick="buyCoffee('${item.id}')">Acheter</button>
         </div>
       `;
       grid.appendChild(card);
@@ -955,6 +1213,9 @@ function renderShop(category) {
       if (data.cost === 0) return;
       if (isBaitCategory && data.category !== category) return;
 
+      // Filter by subType if specified
+      if (subFilter !== 'all' && data.subType && data.subType !== subFilter) return;
+
       const userLevel = userState.user.level;
       const isLocked = data.levelRequired && userLevel < data.levelRequired;
 
@@ -964,7 +1225,7 @@ function renderShop(category) {
       let spec = '';
       if (itemType === 'rod') spec = `Force Clic: +${data.addPower}`;
       else if (itemType === 'reel') spec = `Multiplier: x${data.multiplier}`;
-      else if (itemType === 'line') spec = `Crit Chance: +${Math.round(data.critChance * 100)}%`;
+      else if (itemType === 'line') spec = `Résistance: ${data.strength}kg | Longueur: ${data.lengthM || 150}m | Crit: +${Math.round(data.critChance * 100)}%`;
       else if (itemType === 'bait') spec = `Attraction: +${data.addPower}`;
 
       const slug = getImageSlug(name);
@@ -992,6 +1253,30 @@ function renderShop(category) {
     });
   }
 }
+
+async function buyCoffee(type) {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/coffee`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message, 'success');
+      currentSilver = data.newSilver;
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur lors de l\'achat de café', 'danger');
+  }
+}
+window.buyCoffee = buyCoffee;
 
 async function buyAutoHelper(name, type) {
   try {
@@ -1185,25 +1470,43 @@ function renderStats() {
   if (el('stat-clicks')) el('stat-clicks').innerText = u.total_clicks || 0;
 }
 
+let selectedPrisesMapFilter = 'all';
+
 function renderPrises() {
   const grid = document.getElementById('prises-grid');
   grid.innerHTML = '';
-  if (!userState || !userState.vivier) return;
-
-  const fishList = userState.vivier;
+  const allFishList = (userState && userState.records) ? userState.records : ((userState && userState.vivier) ? userState.vivier : []);
   
-  // Group by fish_name (which includes rarity) to find the max weight
-  const records = {};
-  fishList.forEach(f => {
-    if (!records[f.fish_name] || f.weight > records[f.fish_name].weight) {
-      records[f.fish_name] = f;
+  // Filter ONLY Trophée and Trophée Bleu fish
+  const trophyFishList = allFishList.filter(f => f.fish_name.includes('(Trophée') || f.fish_name.includes('Trophée Bleu'));
+
+  // Group by fish_name to find the max weight per trophy type
+  const recordsObj = {};
+  trophyFishList.forEach(f => {
+    // If map filter is active, filter by species map
+    if (selectedPrisesMapFilter !== 'all') {
+      const baseName = getBaseFishName(f.fish_name);
+      let fishMap = '';
+      if (metadata && metadata.fishDatabase) {
+        for (const [mapName, speciesArray] of Object.entries(metadata.fishDatabase)) {
+          if (speciesArray.some(s => s.name === baseName)) {
+            fishMap = mapName;
+            break;
+          }
+        }
+      }
+      if (fishMap !== selectedPrisesMapFilter) return;
+    }
+
+    if (!recordsObj[f.fish_name] || f.weight > recordsObj[f.fish_name].weight) {
+      recordsObj[f.fish_name] = f;
     }
   });
 
-  const uniqueRecords = Object.values(records).sort((a, b) => b.weight - a.weight);
+  const uniqueRecords = Object.values(recordsObj).sort((a, b) => b.weight - a.weight);
 
   if (uniqueRecords.length === 0) {
-    grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Aucune prise enregistrée.</p>';
+    grid.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 20px; grid-column:1/-1;">Aucun trophée enregistré ${selectedPrisesMapFilter !== 'all' ? 'sur ' + selectedPrisesMapFilter : ''}. Allez pêcher ! 🏆</p>`;
     return;
   }
 
@@ -1211,29 +1514,49 @@ function renderPrises() {
     const card = document.createElement('div');
     let cardClass = 'item-card fish-card';
     let labelClass = 'rarity-tague';
-    if (fish.fish_name.includes('(Trophée Bleu)')) { cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; }
-    else if (fish.fish_name.includes('(Trophée)')) { cardClass += ' trophee'; labelClass = 'rarity-trophee'; }
-    else if (fish.fish_name.includes('(Non-Tagué)')) { cardClass += ' non-tague'; labelClass = 'rarity-non-tague'; }
-    else { cardClass += ' tague'; labelClass = 'rarity-tague'; }
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+
+    if (fish.fish_name.includes('(Trophée Bleu)')) { 
+      cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
+    } else if (fish.fish_name.includes('(Trophée)')) { 
+      cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
+    } else if (fish.fish_name.includes('(Espèce Rare)')) {
+      badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    }
     
     const baseName = getBaseFishName(fish.fish_name);
     const slug = getImageSlug(baseName);
 
     card.className = cardClass;
     card.innerHTML = `
-      <div class="card-img-container">
+      <div class="card-img-container" style="position:relative;">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        <div class="fallback-icon fish-fallback">🐟</div>
+        <div class="fallback-icon fish-fallback">🏆</div>
+        <img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
-        <p>Record Poids: ${fish.weight.toFixed(3)} kg</p>
+        <p>Record Poids: <strong>${fish.weight.toFixed(3)} kg</strong></p>
         <p>Taille: ${Math.floor(Math.pow(fish.weight, 1/3) * 35)} cm</p>
       </div>
     `;
     grid.appendChild(card);
   });
 }
+
+// Add map filter tab button event listeners for Mes Prises
+document.addEventListener('DOMContentLoaded', () => {
+  const filterBtns = document.querySelectorAll('#prises-map-filter .shop-tab-btn');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedPrisesMapFilter = btn.getAttribute('data-map-filter');
+      renderPrises();
+    });
+  });
+});
 
 function renderMapInfo() {
   const container = document.getElementById('map-info-container');
@@ -1288,6 +1611,90 @@ function renderMapInfo() {
   container.innerHTML = html;
 }
 
+let selectedMapChallengeFilter = 'Lac aux moustique';
+
+function renderMapChallenges() {
+  const container = document.getElementById('map-challenges-container');
+  if (!container || !userState || !metadata) return;
+  container.innerHTML = '';
+
+  const fishList = metadata.fishDatabase[selectedMapChallengeFilter] || [];
+  const records = userState.records || [];
+
+  // Check completions for 3 steps
+  // Step 1: All species caught at least once
+  // Step 2: All species caught in Trophy
+  // Step 3: All species caught in Blue Trophy
+  let step1Caught = 0;
+  let step2Trophy = 0;
+  let step3Blue = 0;
+
+  fishList.forEach(fish => {
+    const catchedNormal = records.find(r => r.fish_name.includes(fish.name));
+    const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
+    const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
+
+    if (catchedNormal) step1Caught++;
+    if (catchedTrophy || catchedBlueTrophy) step2Trophy++;
+    if (catchedBlueTrophy) step3Blue++;
+  });
+
+  const totalSpecies = fishList.length;
+
+  // Scale rewards dynamically per map difficulty
+  let rMult = 1.0;
+  if (selectedMapChallengeFilter === 'Rivière Belaya') rMult = 2.5;
+  else if (selectedMapChallengeFilter === 'Lac cuivré') rMult = 6.0;
+  else if (selectedMapChallengeFilter === 'Mer de Norvège') rMult = 15.0;
+
+  const reward1 = Math.floor(500 * rMult).toLocaleString('fr-FR');
+  const reward2 = Math.floor(2500 * rMult).toLocaleString('fr-FR');
+  const reward3 = Math.floor(10000 * rMult).toLocaleString('fr-FR');
+
+  const steps = [
+    { num: 1, title: '🟢 Étape 1 : Maître du Lieu', desc: 'Attraper toutes les espèces de la map au moins une fois.', done: step1Caught, total: totalSpecies, reward: `+${reward1} Silver & Titre Exclusif` },
+    { num: 2, title: '🟡 Étape 2 : Chasseur de Trophées', desc: 'Attraper toutes les espèces de la map en version Trophée.', done: step2Trophy, total: totalSpecies, reward: `+${reward2} Silver & Badge Rare` },
+    { num: 3, title: '🔵 Étape 3 : Légende Vivante (Trophée Bleu)', desc: 'Attraper toutes les espèces de la map en version Trophée Bleu.', done: step3Blue, total: totalSpecies, reward: `+${reward3} Silver & Trophée d'Or` }
+  ];
+
+  steps.forEach(st => {
+    const isCompleted = st.done >= st.total && st.total > 0;
+    const pct = st.total > 0 ? Math.min(100, Math.floor((st.done / st.total) * 100)) : 0;
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.style.cssText = `border: 1px solid ${isCompleted ? 'var(--success)' : 'rgba(255,255,255,0.15)'}; background: ${isCompleted ? 'rgba(39, 174, 96, 0.15)' : 'rgba(20,25,30,0.8)'}; padding: 14px;`;
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="font-size:1.05rem; margin:0; color:${isCompleted ? 'var(--success)' : '#fff'};">${st.title}</h4>
+        <span style="font-weight:800; font-size:0.85rem; color:${isCompleted ? 'var(--success)' : 'var(--text-muted)'};">${isCompleted ? '✅ ACCOMPLI' : st.done + ' / ' + st.total}</span>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0;">${st.desc}</p>
+      <div style="background-color:rgba(0,0,0,0.5); height:6px; border-radius:3px; overflow:hidden; margin:8px 0;">
+        <div style="background:${isCompleted ? 'var(--success)' : 'var(--primary)'}; height:100%; width:${pct}%;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+        <span style="font-size:0.75rem; color:var(--accent); font-weight:700;">Récompense: ${st.reward}</span>
+        ${isCompleted ? '<span style="font-size:0.75rem; color:var(--success); font-weight:800;">🎉 Débloqué</span>' : '<span style="font-size:0.75rem; color:var(--text-muted);">En cours...</span>'}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const challengeBtns = document.querySelectorAll('#map-challenges-filter .shop-tab-btn');
+  challengeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      challengeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMapChallengeFilter = btn.getAttribute('data-map-challenge-filter');
+      renderMapChallenges();
+    });
+  });
+});
+
 function renderRepair() {
   const grid = document.getElementById('repair-grid');
   grid.innerHTML = '';
@@ -1298,45 +1705,130 @@ function renderRepair() {
   const reel = metadata.reels[u.current_reel];
 
   if (rod) {
-    const cost = Math.floor(rod.cost * 0.5);
-    const durability = (u.current_rod_durability || 100).toFixed(1);
+    const durabilityNum = u.current_rod_durability !== undefined ? u.current_rod_durability : 100;
+    const missingPercent = (100 - durabilityNum) / 100.0;
+    const cost = Math.max(1, Math.floor(rod.cost * missingPercent * 1.5));
+    const durabilityStr = durabilityNum.toFixed(1);
+
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
       <div class="item-info">
         <h4>${u.current_rod} (Canne)</h4>
-        <p>Durabilité : <span style="color:${durability < 30 ? 'var(--danger)' : 'var(--success)'};">${durability}%</span></p>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${durabilityStr}%</span></p>
       </div>
       <div class="item-card-footer">
-        <span class="item-price">${cost} 🪙</span>
-        <button class="btn btn-primary btn-sm" ${durability >= 100 ? 'disabled' : ''} onclick="repairGear('rod', '${u.current_rod}')">Réparer</button>
+        <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('rod', '${u.current_rod.replace(/'/g, "\\'")}')">Réparer</button>
       </div>
     `;
     grid.appendChild(card);
   }
 
   if (reel) {
-    const cost = Math.floor(reel.cost * 0.5);
-    const durability = (u.current_reel_durability || 100).toFixed(1);
+    const durabilityNum = u.current_reel_durability !== undefined ? u.current_reel_durability : 100;
+    const missingPercent = (100 - durabilityNum) / 100.0;
+    const cost = Math.max(1, Math.floor(reel.cost * missingPercent * 1.5));
+    const durabilityStr = durabilityNum.toFixed(1);
+
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
       <div class="item-info">
         <h4>${u.current_reel} (Moulinet)</h4>
-        <p>Durabilité : <span style="color:${durability < 30 ? 'var(--danger)' : 'var(--success)'};">${durability}%</span></p>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${durabilityStr}%</span></p>
       </div>
       <div class="item-card-footer">
-        <span class="item-price">${cost} 🪙</span>
-        <button class="btn btn-primary btn-sm" ${durability >= 100 ? 'disabled' : ''} onclick="repairGear('reel', '${u.current_reel}')">Réparer</button>
+        <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('reel', '${u.current_reel.replace(/'/g, "\\'")}')">Réparer</button>
       </div>
     `;
     grid.appendChild(card);
   }
+
+  if (!rod && !reel) {
+    grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Aucun équipement actuellement équipé à réparer.</p>';
+  }
 }
+
+let selectedCarnetMapFilter = 'Lac aux moustique';
+
+function renderCarnet() {
+  const grid = document.getElementById('carnet-grid');
+  if (!grid || !userState || !metadata) return;
+  grid.innerHTML = '';
+
+  const fishList = metadata.fishDatabase[selectedCarnetMapFilter] || [];
+  const records = userState.records || [];
+
+  fishList.forEach(fish => {
+    // Find highest trophy achieved
+    const catchedNormal = records.find(r => r.fish_name.includes(fish.name));
+    const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
+    const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
+
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+    let badgeColor = 'var(--success)';
+    let cardStyle = 'border: 1px solid rgba(255,255,255,0.1);';
+
+    if (catchedBlueTrophy) {
+      badgeImg = 'badge_blue_trophy.png';
+      badgeLabel = 'Trophée Bleu';
+      badgeColor = '#3498db';
+      cardStyle = 'border: 2px solid #3498db; background: rgba(52, 152, 219, 0.15);';
+    } else if (catchedTrophy) {
+      badgeImg = 'badge_trophy.png';
+      badgeLabel = 'Trophée';
+      badgeColor = '#f1c40f';
+      cardStyle = 'border: 2px solid #f1c40f; background: rgba(241, 196, 15, 0.15);';
+    } else if (catchedNormal) {
+      badgeImg = 'badge_normal.png';
+      badgeLabel = 'Tagué';
+      badgeColor = 'var(--success)';
+      cardStyle = 'border: 1px solid var(--success);';
+    } else {
+      cardStyle = 'filter: grayscale(80%); opacity: 0.5;';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.style.cssText = cardStyle;
+
+    const slug = getImageSlug(fish.name);
+    card.innerHTML = `
+      <div class="card-img-container" style="position:relative;">
+        <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="fallback-icon gear-fallback">🐟</div>
+        ${catchedNormal ? `<img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />` : ''}
+      </div>
+      <div class="item-info">
+        <h4>${fish.name}</h4>
+        <p style="color: ${badgeColor}; font-weight: 700; margin-top: 4px; display:flex; align-items:center; gap:4px;">
+          ${catchedNormal ? `<img src="images/${badgeImg}" style="width:14px; height:18px; object-fit:contain;" />` : ''} ${catchedNormal ? badgeLabel : '🔒 Non découvert'}
+        </p>
+        ${catchedNormal ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Max: ${(catchedBlueTrophy || catchedTrophy || catchedNormal).weight.toFixed(3)} kg</p>` : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const carnetBtns = document.querySelectorAll('#carnet-map-filter .shop-tab-btn');
+  carnetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      carnetBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedCarnetMapFilter = btn.getAttribute('data-carnet-filter');
+      renderCarnet();
+    });
+  });
+});
 
 async function repairGear(type, name) {
   try {
-    const res = await fetch(`${API_URL}/api/repair`, {
+    const res = await fetch(`${API_URL}/api/shop/repair`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
