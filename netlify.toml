@@ -1,8 +1,8 @@
 [build]
   publish = "public"
-  command = "echo 'Static site - no build needed'"
+  command = "#"
+  ignore = "exit 0"
 
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--prefix=/dev/null"
