@@ -519,15 +519,16 @@ async function startCombatDirect() {
     fishingStatusText.style.display = 'none';
     combatContainer.style.display = 'block';
     combatFishName.innerText = data.fishName;
-    combatFishRarity.innerText = data.rarity;
     
-    combatFishRarity.className = 'combat-fish-rarity';
-    if (data.rarity.includes('Non-Tagué')) combatFishRarity.classList.add('rarity-non-tague');
-    else if (data.rarity.includes('Trophée Bleu')) combatFishRarity.classList.add('rarity-trophee-bleu');
-    else if (data.rarity.includes('Trophée')) combatFishRarity.classList.add('rarity-trophee');
-    else combatFishRarity.classList.add('rarity-tague');
+    // Set Combat Fish Image (Hide rarity for suspense!)
+    const combatFishImgEl = document.getElementById('combat-fish-img');
+    if (combatFishImgEl) {
+      const slug = getImageSlug(data.fishName);
+      combatFishImgEl.src = `images/fish/${slug}.png`;
+      combatFishImgEl.onerror = () => { combatFishImgEl.src = 'images/fish/carpe_miroir.png'; };
+    }
     
-    fishingActionHint.innerText = "CLIQUEZ À RÉPETTITION POUR INFLIGER DES DÉGÂTS !";
+    fishingActionHint.innerText = "CLIQUEZ À RÉPÉTITION POUR INFLIGER DES DÉGÂTS !";
     updateCombatUI();
 
     // Timer countdown loop
@@ -588,6 +589,15 @@ function dealDamage(e) {
   // Clicks dealt is increased by click power (spcRate)
   combatClicksDealt += spcRate;
   updateCombatUI();
+
+  // Interactive Click Animation on the Fish Image
+  const combatFishImgEl = document.getElementById('combat-fish-img');
+  if (combatFishImgEl) {
+    combatFishImgEl.style.transform = 'scale(1.18) rotate(-4deg)';
+    setTimeout(() => {
+      combatFishImgEl.style.transform = 'scale(1.0) rotate(0deg)';
+    }, 60);
+  }
 
   // Visual splash effect
   createSplashVisual(e.clientX, e.clientY);
@@ -682,8 +692,8 @@ function showCatchOverlay(data) {
   // Fish Hero Image
   const slug = getImageSlug(data.fishName);
   const fishImgEl = document.getElementById('catch-fish-img');
-  fishImgEl.src = `images/gear/${slug}.png`;
-  fishImgEl.onerror = () => { fishImgEl.src = 'images/gear/carpe_miroir.png'; };
+  fishImgEl.src = `images/fish/${slug}.png`;
+  fishImgEl.onerror = () => { fishImgEl.src = 'images/fish/carpe_miroir.png'; };
 
   // Rewards
   document.getElementById('catch-xp-base').innerText = `+${data.xpGained}`;
