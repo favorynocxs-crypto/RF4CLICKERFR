@@ -1849,29 +1849,4 @@ async function repairGear(type, name) {
   }
 }
 
-async function triggerGlobalReset() {
-  if (!confirm("⚠️ Êtes-vous sûr de vouloir RÉINITIALISER TOUS LES JOUEURS DU SERVEUR ?\n\nCela remettra le Silver à 50, le Niveau à 1, et supprimera tout le matériel et les viviers de TOUT LE MONDE.")) {
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_URL}/api/admin/reset`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secretKey: 'RF4_RESET_2026' })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert("✅ SERVEUR RÉINITIALISÉ AVEC SUCCÈS !\nTous les comptes ont été remis à zéro.");
-      await refreshState();
-      window.location.reload();
-    } else {
-      showToast(data.error || "Erreur de réinitialisation", "danger");
-    }
-  } catch (err) {
-    showToast("Erreur serveur lors de la réinitialisation", "danger");
-  }
-}
-window.triggerGlobalReset = triggerGlobalReset;
-
 init();
