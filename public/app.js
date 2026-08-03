@@ -793,7 +793,7 @@ function renderBourriche() {
       <div class="card-img-container" style="position:relative;">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div class="fallback-icon fish-fallback">🐟</div>
-        <img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />
+        <img src="images/${badgeImg}" style="position:absolute; top:6px; right:6px; width:30px; height:34px; object-fit:contain; z-index:2; filter:drop-shadow(0 2px 5px rgba(0,0,0,0.85));" title="${badgeLabel}" />
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
@@ -1534,7 +1534,7 @@ function renderPrises() {
       <div class="card-img-container" style="position:relative;">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div class="fallback-icon fish-fallback">🏆</div>
-        <img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />
+        <img src="images/${badgeImg}" style="position:absolute; top:6px; right:6px; width:30px; height:34px; object-fit:contain; z-index:2; filter:drop-shadow(0 2px 5px rgba(0,0,0,0.85));" title="${badgeLabel}" />
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
