@@ -4,7 +4,8 @@ const API_URL = window.location.origin.includes('localhost') || window.location.
 
 // Slug helpers for authentic images loading
 function getImageSlug(name) {
-  return name.normalize("NFD")
+  return name.replace(/\s*\(.*?\)\s*/g, '')  // Strip (6kg 150m) etc.
+             .normalize("NFD")
              .replace(/[\u0300-\u036f]/g, "")
              .toLowerCase()
              .replace(/[^a-z0-9]/g, "_")
