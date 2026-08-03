@@ -140,19 +140,10 @@ const AUTO_FISHERS = {
   'Amorceur automatique': { baseCost: 50, sps: 0.1, desc: 'Amorce le spot de pêche automatiquement.' },
   'Canne sur RodPods': { baseCost: 250, sps: 0.5, desc: 'Une canne posée passivement qui attend les touches.' },
   'Pêcheur débutant': { baseCost: 500, sps: 1.0, desc: 'Embauche un ami pêcheur pour vous aider.' },
-  'Filet de dérive': { baseCost: 1000, sps: 2.0, desc: 'Un filet posé capturant les poissons en continu.' },
-  'Pêcheur Pro': { baseCost: 5000, sps: 5.0, desc: 'Un professionnel de la pêche à vos côtés.' },
-  'Bateau de traîne': { baseCost: 15000, sps: 10.0, desc: 'Pêche automatique à la traîne en bateau.' },
-  'Chalutier': { baseCost: 50000, sps: 25.0, desc: 'Production industrielle de poissons.' }
+  'Filet de dérive': { baseCost: 1000, sps: 2.0, desc: 'Un filet posé capturant les poissons en continu.' }
 };
 
-const AUTO_CLICKER = {
-  'Auto-cliqueur (Niv 1)': { baseCost: 100, sps: 0.2, desc: 'Génère 0.2 Silver par seconde automatiquement.' },
-  'Auto-cliqueur (Niv 2)': { baseCost: 500, sps: 1.0, desc: 'Génère 1.0 Silver par seconde automatiquement.' },
-  'Auto-cliqueur (Niv 3)': { baseCost: 2500, sps: 4.0, desc: 'Génère 4.0 Silver par seconde automatiquement.' },
-  'Auto-cliqueur (Niv 4)': { baseCost: 10000, sps: 15.0, desc: 'Génère 15.0 Silver par seconde automatiquement.' },
-  'Auto-cliqueur (Niv 5)': { baseCost: 50000, sps: 50.0, desc: 'Génère 50.0 Silver par seconde automatiquement.' }
-};
+const AUTO_CLICKER = {};
 
 module.exports = {
   FISH_DATABASE,
