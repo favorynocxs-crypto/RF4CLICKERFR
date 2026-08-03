@@ -48,8 +48,13 @@
         <h1 id="current-location-name">Lac aux moustique</h1>
       </div>
       
-      <!-- Center: Player's Silver -->
-      <div class="hud-center">
+      <!-- Center: Clock & Weather Widget (High visibility) + Player's Silver -->
+      <div class="hud-center" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <div id="weather-time-widget" style="display:flex; align-items:center; gap:12px; font-size:1.15rem; font-weight:800; background:rgba(0,0,0,0.6); padding:6px 16px; border-radius:8px; border:1px solid var(--accent); box-shadow:0 0 10px rgba(229,169,59,0.3);">
+          <span id="hud-clock-time" style="color:var(--accent); text-shadow:0 0 8px rgba(229,169,59,0.5);">🕒 12:00</span>
+          <span id="hud-weather-status" style="color:#fff;">☀️ Ensoleillé</span>
+        </div>
+        
         <div class="silver-counter-wrapper">
           <span class="silver-icon">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--accent)" stroke-width="2.5"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v8M9 10h6M9 13h6" stroke-linecap="round"></path></svg>
@@ -60,12 +65,16 @@
         <div class="sps-rate-indicator">SPS: +<span id="cookie-sps-val">0.00</span> /s</div>
       </div>
       
-      <!-- Right: Player's Level & XP -->
+      <!-- Right: Player's Level, XP & Energy -->
       <div class="hud-right">
         <div class="user-level-badge">Niveau <span id="hud-lvl-val">1</span></div>
         <div class="xp-hud-bar">
           <div class="xp-progress-bar"><div id="xp-progress"></div></div>
           <span id="hud-xp-val">0 / 100 XP</span>
+        </div>
+        <div class="energy-hud-bar" title="Énergie (Moins de 30% = Malus de 50% de puissance)">
+          <div class="energy-progress-bar"><div id="energy-progress" style="width:100%; background:var(--success); height:100%; border-radius:4px; transition:width 0.3s;"></div></div>
+          <span id="hud-energy-val" style="font-size:0.75rem; color:var(--text-primary); font-weight:600;">⚡ 100%</span>
         </div>
         <button id="logout-btn" class="btn btn-danger btn-sm">Quitter</button>
       </div>
@@ -149,14 +158,32 @@
           <button class="tab-btn" data-tab="tab-inventory">Matériel</button>
           <button class="tab-btn" data-tab="tab-bourriche">Bourriche</button>
           <button class="tab-btn" data-tab="tab-prises">Mes Prises</button>
+          <button class="tab-btn" data-tab="tab-map-challenges" style="color:var(--primary); font-weight:800;">🏆 Défis Map</button>
           <button class="tab-btn" data-tab="tab-quests">Défis</button>
           <button class="tab-btn" data-tab="tab-travel">Voyage</button>
           <button class="tab-btn" data-tab="tab-map">Info Map</button>
           <button class="tab-btn" data-tab="tab-leaderboard">Classement</button>
           <button class="tab-btn" data-tab="tab-account">Compte</button>
           <button class="tab-btn" data-tab="tab-stats">Statistiques</button>
+          <button class="tab-btn" data-tab="tab-carnet" style="color:var(--accent);">📘 Carnet</button>
           <button class="tab-btn" data-tab="tab-repair" style="color:var(--warning);">Réparation</button>
         </nav>
+
+        <!-- Tab Content: Défis Uniques de Map -->
+        <div id="tab-map-challenges" class="tab-content">
+          <div class="panel">
+            <h2>🏆 Défis Uniques de Map (3 Étapes)</h2>
+            <div class="shop-tabs" id="map-challenges-filter" style="margin-bottom: 12px;">
+              <button class="shop-tab-btn active" data-map-challenge-filter="Lac aux moustique">Moustique</button>
+              <button class="shop-tab-btn" data-map-challenge-filter="Rivière Belaya">Belaya</button>
+              <button class="shop-tab-btn" data-map-challenge-filter="Lac cuivré">Cuivré</button>
+              <button class="shop-tab-btn" data-map-challenge-filter="Mer de Norvège">Norvège</button>
+            </div>
+            <div id="map-challenges-container" style="display:flex; flex-direction:column; gap:12px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
 
         <!-- Tab Content: Shop -->
         <div id="tab-shop" class="tab-content active">
@@ -171,7 +198,11 @@
               <button class="shop-tab-btn" data-shop="vifs">Vifs</button>
               <button class="shop-tab-btn" data-shop="artificiel">Artificiels</button>
               <button class="shop-tab-btn" data-shop="leurres">Leurres</button>
+              <button class="shop-tab-btn" data-shop="coffee">☕ Café & Énergie</button>
               <button class="shop-tab-btn" data-shop="p2w" style="color:var(--accent); font-weight:800;">🔥 BOUTIQUE OR</button>
+            </div>
+            <div class="shop-tabs" id="shop-subfilter-tabs" style="display:none; margin-top:8px; background:rgba(0,0,0,0.3); padding:6px; border-radius:6px;">
+              <!-- Dynamically populated subfilters -->
             </div>
             <div class="shop-grid" id="shop-grid">
               <!-- Dynamically populated -->
@@ -206,7 +237,14 @@
         <!-- Tab Content: Mes Prises -->
         <div id="tab-prises" class="tab-content">
           <div class="panel">
-            <h2>Mes Prises (Records)</h2>
+            <h2>🏆 Trophées & Trophées Bleus</h2>
+            <div class="shop-tabs" id="prises-map-filter" style="margin-bottom: 15px;">
+              <button class="shop-tab-btn active" data-map-filter="all">Toutes les Maps</button>
+              <button class="shop-tab-btn" data-map-filter="Lac aux moustique">Lac aux moustique</button>
+              <button class="shop-tab-btn" data-map-filter="Rivière Belaya">Rivière Belaya</button>
+              <button class="shop-tab-btn" data-map-filter="Lac cuivré">Lac cuivré</button>
+              <button class="shop-tab-btn" data-map-filter="Mer de Norvège">Mer de Norvège</button>
+            </div>
             <div class="inventory-grid" id="prises-grid">
               <!-- Dynamically populated -->
             </div>
@@ -271,7 +309,9 @@
           <div class="panel">
             <h2>Votre Compte</h2>
             <p><strong>Nom d'utilisateur:</strong> <span id="account-username-lbl">...</span></p>
-            <p style="margin-top:20px;"><button class="btn btn-primary" onclick="logout()">Se déconnecter</button></p>
+            <div style="margin-top:25px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1);">
+              <button class="btn btn-primary" onclick="logout()">Se déconnecter</button>
+            </div>
           </div>
         </div>
 
@@ -308,6 +348,22 @@
                 <span>Clics effectués :</span>
                 <strong id="stat-clicks">0</strong>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Carnet de Collection -->
+        <div id="tab-carnet" class="tab-content">
+          <div class="panel">
+            <h2>📘 Carnet de Collection & Trophées</h2>
+            <div class="shop-tabs" id="carnet-map-filter" style="margin-bottom: 15px;">
+              <button class="shop-tab-btn active" data-carnet-filter="Lac aux moustique">Moustique</button>
+              <button class="shop-tab-btn" data-carnet-filter="Rivière Belaya">Belaya</button>
+              <button class="shop-tab-btn" data-carnet-filter="Lac cuivré">Cuivré</button>
+              <button class="shop-tab-btn" data-carnet-filter="Mer de Norvège">Norvège</button>
+            </div>
+            <div class="inventory-grid" id="carnet-grid">
+              <!-- Dynamically populated -->
             </div>
           </div>
         </div>
@@ -351,6 +407,65 @@
         </div>
       </div>
       <button id="offline-close-btn" class="btn btn-primary">Récupérer</button>
+    </div>
+  </div>
+
+  <!-- RF4 Victory Catch Overlay -->
+  <div id="catch-overlay" class="splash-overlay" style="display:none; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index:9999;">
+    <div class="rf4-catch-modal" style="width:100%; max-width:850px; text-align:center; position:relative; color:#fff; display:flex; flex-direction:column; align-items:center; gap:16px;">
+      
+      <!-- Top Title & Stats Bar -->
+      <h1 id="catch-fish-name" style="font-size:2.2rem; font-weight:800; margin:0; text-shadow:0 2px 10px rgba(0,0,0,0.8);">Carpe Miroir</h1>
+      
+      <div style="display:flex; align-items:center; gap:12px; font-weight:700; font-size:0.95rem;">
+        <span style="background:rgba(0,0,0,0.6); padding:4px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.2);">
+          ⚖️ <span id="catch-fish-weight">0.000</span> kg
+        </span>
+        <span style="background:rgba(0,0,0,0.6); padding:4px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.2);">
+          📏 <span id="catch-fish-length">0</span> cm
+        </span>
+        <span id="catch-rarity-badge-container" style="background:#27ae60; color:#fff; padding:4px 12px; border-radius:4px; display:flex; align-items:center; gap:6px;">
+          <img id="catch-badge-img" src="images/badge_normal.png" style="height:18px; object-fit:contain;" />
+          <span id="catch-badge-label">Tagué</span>
+        </span>
+      </div>
+
+      <!-- Fish Hero Image Display (Reserved for future fish artwork) -->
+      <div id="catch-fish-img-container" style="display:none; position:relative; width:100%; height:260px; align-items:center; justify-content:center; margin:10px 0;">
+        <img id="catch-fish-img" src="" style="max-height:240px; max-width:90%; object-fit:contain; filter:drop-shadow(0 15px 25px rgba(0,0,0,0.9));" />
+      </div>
+
+      <!-- XP & Rewards Cards -->
+      <div style="display:flex; align-items:center; justify-content:center; gap:16px; width:100%; max-width:600px;">
+        <div style="background:rgba(20,25,30,0.85); border:1px solid rgba(255,255,255,0.15); padding:12px 20px; border-radius:8px; flex:1; text-align:center;">
+          <div style="background:#27ae60; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; margin:0 auto 6px; font-weight:800; font-size:0.75rem;">XP</div>
+          <div id="catch-xp-base" style="font-size:1.4rem; font-weight:800; color:#fff;">+0</div>
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Points d'expérience</div>
+        </div>
+
+        <div style="background:rgba(20,25,30,0.85); border:1px solid #f1c40f; padding:12px 20px; border-radius:8px; flex:1; text-align:center;">
+          <div style="background:#f1c40f; color:#000; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; margin:0 auto 6px; font-weight:800; font-size:0.7rem;">BONUS</div>
+          <div id="catch-xp-release" style="font-size:1.4rem; font-weight:800; color:#f1c40f;">+0 XP</div>
+          <div style="font-size:0.7rem; color:#f1c40f; text-transform:uppercase; margin-top:2px;">Relâcher (+30% XP)</div>
+        </div>
+
+        <div style="background:rgba(20,25,30,0.85); border:1px solid rgba(255,255,255,0.15); padding:12px 20px; border-radius:8px; flex:1; text-align:center;">
+          <div style="background:#e5a93b; color:#000; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; margin:0 auto 6px; font-weight:800; font-size:0.9rem;">🪙</div>
+          <div id="catch-silver-val" style="font-size:1.4rem; font-weight:800; color:#e5a93b;">+0.00</div>
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Valeur estimée</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons: Garder vs Relâcher -->
+      <div style="display:flex; gap:16px; margin-top:10px; width:100%; max-width:450px;">
+        <button id="catch-keep-btn" class="btn" style="flex:1; padding:14px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.4); color:#fff; font-weight:700; font-size:1rem; border-radius:6px; cursor:pointer;">
+          Garder
+        </button>
+        <button id="catch-release-btn" class="btn" style="flex:1; padding:14px; background:linear-gradient(135deg,#27ae60,#2ecc71); border:none; color:#fff; font-weight:800; font-size:1rem; border-radius:6px; cursor:pointer; box-shadow:0 4px 15px rgba(39,174,96,0.4);">
+          Relâcher (+30% XP)
+        </button>
+      </div>
+
     </div>
   </div>
 
