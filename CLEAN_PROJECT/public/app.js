@@ -1533,23 +1533,23 @@ function renderCarnet() {
     const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
     const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
 
-    let badgeImg = 'badge_normal.jpg';
+    let badgeImg = 'badge_normal.png';
     let badgeLabel = 'Tagué';
     let badgeColor = 'var(--success)';
     let cardStyle = 'border: 1px solid rgba(255,255,255,0.1);';
 
     if (catchedBlueTrophy) {
-      badgeImg = 'badge_blue_trophy.jpg';
+      badgeImg = 'badge_blue_trophy.png';
       badgeLabel = 'Trophée Bleu';
       badgeColor = '#3498db';
       cardStyle = 'border: 2px solid #3498db; background: rgba(52, 152, 219, 0.15);';
     } else if (catchedTrophy) {
-      badgeImg = 'badge_trophy.jpg';
+      badgeImg = 'badge_trophy.png';
       badgeLabel = 'Trophée';
       badgeColor = '#f1c40f';
       cardStyle = 'border: 2px solid #f1c40f; background: rgba(241, 196, 15, 0.15);';
     } else if (catchedNormal) {
-      badgeImg = 'badge_normal.jpg';
+      badgeImg = 'badge_normal.png';
       badgeLabel = 'Tagué';
       badgeColor = 'var(--success)';
       cardStyle = 'border: 1px solid var(--success);';
