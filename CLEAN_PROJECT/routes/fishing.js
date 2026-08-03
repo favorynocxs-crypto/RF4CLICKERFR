@@ -139,13 +139,23 @@ router.post('/land', authenticate, async (req, res) => {
     if (data.rarity.includes('Trophée Bleu')) wear *= 5;
     wear = Number(wear.toFixed(2));
 
+    // Energy consumption: Base 0.4% per click, adjusted by fish weight
+    let weightMult = 0.5;
+    if (data.weight < 2.0) weightMult = 0.2;
+    else if (data.weight >= 15.0) weightMult = 1.0;
+
+    const clicksCount = Math.ceil(data.clicksRequired);
+    const energyCost = Number((clicksCount * 0.4 * weightMult).toFixed(1));
+    const currentEnergy = req.user.energy !== undefined ? req.user.energy : 100.0;
+    const newEnergy = Math.max(0.0, Number((currentEnergy - energyCost).toFixed(1)));
+
     const newXP = req.user.xp + data.xpValue;
     const newLevel = calculateLevel(newXP);
     const leveledUp = newLevel > req.user.level;
 
     await db.query(
-      'UPDATE users SET xp = $1, level = $2, total_catches = total_catches + 1, total_clicks = total_clicks + $3, last_active = CURRENT_TIMESTAMP, current_rod_durability = GREATEST(0.0, current_rod_durability - $4), current_reel_durability = GREATEST(0.0, current_reel_durability - $4) WHERE id = $5',
-      [newXP, newLevel, Math.ceil(data.clicksRequired), wear, req.user.id]
+      'UPDATE users SET xp = $1, level = $2, total_catches = total_catches + 1, total_clicks = total_clicks + $3, energy = $4, last_active = CURRENT_TIMESTAMP, current_rod_durability = GREATEST(0.0, current_rod_durability - $5), current_reel_durability = GREATEST(0.0, current_reel_durability - $5) WHERE id = $6',
+      [newXP, newLevel, clicksCount, newEnergy, wear, req.user.id]
     );
     
     await db.query('COMMIT');
