@@ -897,12 +897,23 @@ function renderInventory() {
       (item.item_type === 'bait' && userState.user.current_bait === item.item_name);
 
     let details = '';
-    if (item.item_type === 'rod') details = `Force: +${metadata.rods[item.item_name].addPower}`;
-    else if (item.item_type === 'reel') details = `Mult: x${metadata.reels[item.item_name].multiplier}`;
-    else if (item.item_type === 'line') details = `Crit: +${Math.round(metadata.lines[item.item_name].critChance * 100)}%`;
-    else if (item.item_type === 'bait') details = `Attraction: +${metadata.baits[item.item_name].addPower}`;
+    let itemConfig = null;
+    if (metadata) {
+      if (item.item_type === 'rod') itemConfig = metadata.rods[item.item_name];
+      else if (item.item_type === 'reel') itemConfig = metadata.reels[item.item_name];
+      else if (item.item_type === 'line') itemConfig = metadata.lines[item.item_name];
+      else if (item.item_type === 'bait') itemConfig = metadata.baits[item.item_name];
+    }
+
+    if (itemConfig) {
+      if (item.item_type === 'rod') details = `Force Clic: +${itemConfig.addPower}`;
+      else if (item.item_type === 'reel') details = `Multiplier: x${itemConfig.multiplier}`;
+      else if (item.item_type === 'line') details = `Résistance: ${itemConfig.strength}kg | Longueur: ${itemConfig.lengthM || 150}m`;
+      else if (item.item_type === 'bait') details = `Attraction: +${itemConfig.addPower}`;
+    }
 
     const slug = getImageSlug(item.item_name);
+    const escapedName = item.item_name.replace(/'/g, "\\'");
 
     card.innerHTML = `
       <div class="card-img-container">
@@ -915,7 +926,7 @@ function renderInventory() {
         <p style="margin-top: 4px;">${details}</p>
       </div>
       <div class="item-card-footer">
-        ${isEquipped ? '<span style="color:var(--success); font-weight:600; font-size:0.8rem;">ÉQUIPÉ</span>' : `<button class="btn btn-primary btn-sm" onclick="equipItem('${item.item_type}', '${item.item_name}')">Équiper</button>`}
+        ${isEquipped ? '<span style="color:var(--success); font-weight:600; font-size:0.8rem;">ÉQUIPÉ</span>' : `<button class="btn btn-primary btn-sm" onclick="equipItem('${item.item_type}', '${escapedName}')">Équiper</button>`}
       </div>
     `;
     grid.appendChild(card);
