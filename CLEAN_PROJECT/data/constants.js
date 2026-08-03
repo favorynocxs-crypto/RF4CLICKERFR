@@ -66,44 +66,70 @@ const WATER_BODIES = {
 };
 
 const RODS = {
-  'Comfort FD360': { maxW: 4.5, cost: 0, addPower: 0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'fond' },
-  'Siberia Model-Two FD420H': { maxW: 8.5, cost: 180, addPower: 2, levelRequired: 3, mapName: 'Rivière Belaya', subType: 'spinning' },
-  'Siberia Fortuna Carp 360XH': { maxW: 16.0, cost: 550, addPower: 6, levelRequired: 12, mapName: 'Lac cuivré', subType: 'fond' },
-  'KingFisher Legacy Ti': { maxW: 32.0, cost: 2400, addPower: 30, levelRequired: 20, mapName: 'Mer de Norvège', subType: 'mer' }
+  'Kama Comfort FD360': { maxW: 4.5, cost: 0, addPower: 0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'fond' },
+  'Express Fishing Corona S60L': { maxW: 6.0, cost: 0, addPower: 0, levelRequired: 1, mapName: 'Rivière Belaya', subType: 'spinning' },
+  'Syberia Model Two FD420H': { maxW: 12.0, cost: 500, addPower: 5, levelRequired: 5, mapName: 'Lac aux moustique', subType: 'fond' },
+  'Syberia Model One S98H': { maxW: 14.0, cost: 500, addPower: 5, levelRequired: 5, mapName: 'Rivière Belaya', subType: 'spinning' },
+  'Syberia Fortuna Carp 360XH': { maxW: 25.0, cost: 2500, addPower: 15, levelRequired: 15, mapName: 'Lac cuivré', subType: 'fond' },
+  'Heaven Creek Barracuda SPM88H': { maxW: 28.0, cost: 2500, addPower: 15, levelRequired: 15, mapName: 'Rivière Belaya', subType: 'spinning' },
+  'Kingfisher Legacy Ti 12-2.50': { maxW: 60.0, cost: 10000, addPower: 45, levelRequired: 25, mapName: 'Lac cuivré', subType: 'fond' },
+  'Segun Ultima J-F72HHH': { maxW: 120.0, cost: 10000, addPower: 50, levelRequired: 25, mapName: 'Mer de Norvège', subType: 'mer' },
+  'Saltmaster 5000': { maxW: 80.0, cost: 5000, addPower: 25, levelRequired: 20, mapName: 'Mer de Norvège', subType: 'mer' },
+  'Poseidon 80': { maxW: 150.0, cost: 15000, addPower: 75, levelRequired: 30, mapName: 'Mer de Norvège', subType: 'mer' },
+  'Poseidon Ultra 100': { maxW: 300.0, cost: 50000, addPower: 150, levelRequired: 50, mapName: 'Mer de Norvège', subType: 'mer' }
 };
 
 const REELS = {
-  'Express Fishing Spark 1 2000S': { maxDrag: 4.6, cost: 0, multiplier: 1.0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'fond' },
-  'Siberia Gold 60S': { maxDrag: 6.5, cost: 220, multiplier: 1.20, levelRequired: 3, mapName: 'Rivière Belaya', subType: 'spinning' },
-  'Beluga Venga Classic 10000': { maxDrag: 9.5, cost: 950, multiplier: 1.80, levelRequired: 12, mapName: 'Lac cuivré', subType: 'fond' },
-  'Reef Turion SW 30000': { maxDrag: 22.5, cost: 3500, multiplier: 4.00, levelRequired: 20, mapName: 'Mer de Norvège', subType: 'mer' }
+  'Express Fishing Skarp 2 2000S': { maxDrag: 4.6, cost: 0, multiplier: 1.0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'fond' },
+  'Syberia Gold 60S': { maxDrag: 6.5, cost: 500, multiplier: 1.25, levelRequired: 3, mapName: 'Lac aux moustique', subType: 'fond' },
+  'Beluga Venga Classic 10000': { maxDrag: 12.5, cost: 2500, multiplier: 2.20, levelRequired: 15, mapName: 'Lac cuivré', subType: 'fond' },
+  'Reef Turion SW 30000': { maxDrag: 25.5, cost: 10000, multiplier: 4.50, levelRequired: 25, mapName: 'Lac cuivré', subType: 'fond' },
+  'Zeiman Borealica 20': { maxDrag: 40.0, cost: 25000, multiplier: 7.00, levelRequired: 25, mapName: 'Mer de Norvège', subType: 'mer' },
+  'Zeiman Electro Raptor 40': { maxDrag: 80.0, cost: 50000, multiplier: 12.00, levelRequired: 50, mapName: 'Mer de Norvège', subType: 'mer' }
 };
 
 const LINES = {
   'Siberia Mono SS (3.2kg)': { strength: 3.2, thickness: 0.18, type: 'Nylon', cost: 0, critChance: 0.0, levelRequired: 1, mapName: 'Lac aux moustique' },
   'Siberia Fluorocarbone (5.4kg)': { strength: 5.4, thickness: 0.25, type: 'Fluorocarbone', cost: 60, critChance: 0.06, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Siberia Tresse (11.5kg)': { strength: 11.5, thickness: 0.32, type: 'Tresse', cost: 150, critChance: 0.12, levelRequired: 12, mapName: 'Lac cuivré' },
-  'Siberia DevilBraid Tresse (22kg)': { strength: 22.0, thickness: 0.45, type: 'Tresse', cost: 380, critChance: 0.20, levelRequired: 20, mapName: 'Mer de Norvège' }
+  'HiPower Braid': { strength: 12.0, thickness: 0.30, type: 'Tresse', cost: 500, critChance: 0.10, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Ultra Braid': { strength: 25.0, thickness: 0.40, type: 'Tresse', cost: 2500, critChance: 0.20, levelRequired: 10, mapName: 'Lac cuivré' },
+  'Siberia DevilBraid Tresse (22kg)': { strength: 50.0, thickness: 0.50, type: 'Tresse', cost: 5000, critChance: 0.30, levelRequired: 20, mapName: 'Mer de Norvège' }
 };
 
 const BAITS = {
   'Ver de vase': { category: 'vers', cost: 10, addPower: 0.5, levelRequired: 1, mapName: 'Lac aux moustique' },
   'Pain': { category: 'artificiel', cost: 0, addPower: 0.0, levelRequired: 1, mapName: 'Lac aux moustique' },
-  'Popper Surface (5g)': { category: 'leurres', subType: 'surface', cost: 30, addPower: 1.0, levelRequired: 1, mapName: 'Lac aux moustique' },
 
   'Ver rouge': { category: 'vers', cost: 25, addPower: 1.5, levelRequired: 3, mapName: 'Rivière Belaya' },
   'Vif (Petit Gardon)': { category: 'vifs', cost: 80, addPower: 3.0, levelRequired: 3, mapName: 'Rivière Belaya' },
   'Bouillettes Fraise': { category: 'artificiel', cost: 40, addPower: 1.5, levelRequired: 3, mapName: 'Rivière Belaya' },
-  'Shad Souple (12g)': { category: 'leurres', subType: 'souple', cost: 75, addPower: 2.0, levelRequired: 3, mapName: 'Rivière Belaya' },
+
+  'Bond Bleu': { category: 'leurres', subType: 'souple', cost: 500, addPower: 4.0, levelRequired: 4, mapName: 'Rivière Belaya' },
+  'Bond Jaune': { category: 'leurres', subType: 'souple', cost: 500, addPower: 4.0, levelRequired: 4, mapName: 'Rivière Belaya' },
+  'Bond Rouge': { category: 'leurres', subType: 'souple', cost: 500, addPower: 4.0, levelRequired: 4, mapName: 'Rivière Belaya' },
+
+  'Cuillère Argent': { category: 'leurres', subType: 'cuillere', cost: 350, addPower: 3.0, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Cuillère Dorée': { category: 'leurres', subType: 'cuillere', cost: 350, addPower: 3.0, levelRequired: 3, mapName: 'Rivière Belaya' },
+  'Cuillère Noire': { category: 'leurres', subType: 'cuillere', cost: 350, addPower: 3.0, levelRequired: 3, mapName: 'Rivière Belaya' },
+
+  'Popper Surface Blanc': { category: 'leurres', subType: 'surface', cost: 2500, addPower: 8.0, levelRequired: 5, mapName: 'Rivière Belaya' },
+  'Popper Surface Jaune-Vert': { category: 'leurres', subType: 'surface', cost: 2500, addPower: 8.0, levelRequired: 5, mapName: 'Rivière Belaya' },
+  'Popper Surface Rouge-Jaune': { category: 'leurres', subType: 'surface', cost: 2500, addPower: 8.0, levelRequired: 5, mapName: 'Rivière Belaya' },
 
   'Ver de fumier': { category: 'vers', cost: 50, addPower: 2.5, levelRequired: 12, mapName: 'Lac cuivré' },
   'Vif (Rotengle)': { category: 'vifs', cost: 150, addPower: 6.0, levelRequired: 12, mapName: 'Lac cuivré' },
   'Pellets Halibut': { category: 'artificiel', cost: 120, addPower: 4.0, levelRequired: 12, mapName: 'Lac cuivré' },
-  'Wobbler Dur (25g)': { category: 'leurres', subType: 'dure', cost: 160, addPower: 5.0, levelRequired: 12, mapName: 'Lac cuivré' },
+
+  'Poisson Mousse Jaune': { category: 'leurres', subType: 'mer', cost: 2500, addPower: 15.0, levelRequired: 22, mapName: 'Mer de Norvège' },
+  'Poisson Mousse Noir': { category: 'leurres', subType: 'mer', cost: 2500, addPower: 15.0, levelRequired: 22, mapName: 'Mer de Norvège' },
+  'Poisson Mousse Vert': { category: 'leurres', subType: 'mer', cost: 2500, addPower: 15.0, levelRequired: 22, mapName: 'Mer de Norvège' },
+
+  'Wobbler Dur Jaune': { category: 'leurres', subType: 'mer', cost: 5000, addPower: 25.0, levelRequired: 25, mapName: 'Mer de Norvège' },
+  'Wobbler Dur Vert': { category: 'leurres', subType: 'mer', cost: 5000, addPower: 25.0, levelRequired: 25, mapName: 'Mer de Norvège' },
+  'Wobbler Dur Vert Clair': { category: 'leurres', subType: 'mer', cost: 5000, addPower: 25.0, levelRequired: 25, mapName: 'Mer de Norvège' },
 
   'Vif (Perche)': { category: 'vifs', cost: 300, addPower: 8.0, levelRequired: 20, mapName: 'Mer de Norvège' },
-  'Amorce Marine': { category: 'artificiel', cost: 250, addPower: 15.0, levelRequired: 20, mapName: 'Mer de Norvège' },
-  'Cuillere Spoon (40g)': { category: 'leurres', subType: 'cuillere', cost: 320, addPower: 20.0, levelRequired: 20, mapName: 'Mer de Norvège' }
+  'Amorce Marine': { category: 'artificiel', cost: 250, addPower: 15.0, levelRequired: 20, mapName: 'Mer de Norvège' }
 };
 
 const AUTO_FISHERS = {
