@@ -68,7 +68,6 @@ const biteProgressContainer = document.getElementById('bite-progress-container')
 const biteProgressFill = document.getElementById('bite-progress-fill');
 const combatContainer = document.getElementById('combat-container');
 const combatFishName = document.getElementById('combat-fish-name');
-const combatFishRarity = document.getElementById('combat-fish-rarity');
 const combatProgressFill = document.getElementById('combat-progress-fill');
 const fishingActionHint = document.getElementById('fishing-action-hint');
 
