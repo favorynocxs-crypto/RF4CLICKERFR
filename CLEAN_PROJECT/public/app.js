@@ -1004,7 +1004,7 @@ function renderShop(category, subFilter = 'all') {
   if (!metadata || !userState) return;
 
   // Manage subfilters visibility
-  if (['rods', 'reels', 'leurres'].includes(category)) {
+  if (['rods', 'reels', 'lines', 'leurres'].includes(category)) {
     subFilterContainer.style.display = 'flex';
     subFilterContainer.innerHTML = '';
     
@@ -1015,6 +1015,13 @@ function renderShop(category, subFilter = 'all') {
         { id: 'fond', label: 'Pêche au fond' },
         { id: 'spinning', label: 'Spinning' },
         { id: 'mer', label: 'Pêche en Mer' }
+      ];
+    } else if (category === 'lines') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'fond', label: 'Fils de Fond' },
+        { id: 'leurre', label: 'Fils de Leurres' },
+        { id: 'mer', label: 'Fils de Mer' }
       ];
     } else if (category === 'leurres') {
       subTypes = [
@@ -1177,7 +1184,7 @@ function renderShop(category, subFilter = 'all') {
       let spec = '';
       if (itemType === 'rod') spec = `Force Clic: +${data.addPower}`;
       else if (itemType === 'reel') spec = `Multiplier: x${data.multiplier}`;
-      else if (itemType === 'line') spec = `Crit Chance: +${Math.round(data.critChance * 100)}%`;
+      else if (itemType === 'line') spec = `Résistance: ${data.strength}kg | Longueur: ${data.lengthM || 150}m | Crit: +${Math.round(data.critChance * 100)}%`;
       else if (itemType === 'bait') spec = `Attraction: +${data.addPower}`;
 
       const slug = getImageSlug(name);
