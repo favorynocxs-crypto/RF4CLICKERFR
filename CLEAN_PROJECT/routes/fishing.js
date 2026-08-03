@@ -140,8 +140,8 @@ router.post('/land', authenticate, async (req, res) => {
 
     await db.query('BEGIN');
     
-    await db.query(
-      'INSERT INTO catches (user_id, fish_name, weight, silver_value, xp_value, sold) VALUES ($1, $2, $3, $4, $5, FALSE)',
+    const catchResult = await db.get(
+      'INSERT INTO catches (user_id, fish_name, weight, silver_value, xp_value, sold) VALUES ($1, $2, $3, $4, $5, FALSE) RETURNING id',
       [req.user.id, data.fishName, data.weight, data.silverValue, data.xpValue]
     );
 
@@ -171,11 +171,17 @@ router.post('/land', authenticate, async (req, res) => {
     
     await db.query('COMMIT');
 
+    const calculatedLength = Math.max(12, Math.floor(Math.pow(data.weight, 0.45) * 28));
+
     res.json({
       success: true,
+      catchId: catchResult ? catchResult.id : null,
       fishName: data.fishName,
       weight: data.weight,
+      lengthCm: calculatedLength,
+      silverValue: data.silverValue,
       xpGained: data.xpValue,
+      rarity: data.rarity,
       newXP,
       newLevel,
       levelUp: leveledUp ? newLevel : null
@@ -183,6 +189,37 @@ router.post('/land', authenticate, async (req, res) => {
   } catch (err) {
     try { await db.query('ROLLBACK'); } catch(e) {}
     res.status(500).json({ error: 'Failed to land fish' });
+  }
+});
+
+router.post('/release', authenticate, async (req, res) => {
+  const { catchId } = req.body;
+  if (!catchId) return res.status(400).json({ error: 'Missing catchId' });
+
+  try {
+    const catchItem = await db.get(
+      'SELECT * FROM catches WHERE id = $1 AND user_id = $2 AND sold = FALSE',
+      [catchId, req.user.id]
+    );
+
+    if (!catchItem) {
+      return res.status(400).json({ error: 'Poisson introuvable ou déjà vendu' });
+    }
+
+    const bonusXP = Math.floor(catchItem.xp_value * 0.3);
+
+    await db.query('BEGIN');
+    await db.query('DELETE FROM catches WHERE id = $1', [catchId]);
+
+    const newXP = req.user.xp + bonusXP;
+    const newLevel = calculateLevel(newXP);
+    await db.query('UPDATE users SET xp = $1, level = $2 WHERE id = $3', [newXP, newLevel, req.user.id]);
+    await db.query('COMMIT');
+
+    res.json({ success: true, bonusXP, newXP, newLevel });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Failed to release fish' });
   }
 });
 
