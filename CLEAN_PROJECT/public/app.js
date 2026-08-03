@@ -378,6 +378,7 @@ function setupTabs() {
       if (target === 'tab-map') renderMapInfo();
       if (target === 'tab-stats') renderStats();
       if (target === 'tab-repair') renderRepair();
+      if (target === 'tab-map-challenges') renderMapChallenges();
     });
   });
 }
@@ -1553,6 +1554,80 @@ function renderMapInfo() {
   container.innerHTML = html;
 }
 
+let selectedMapChallengeFilter = 'Lac aux moustique';
+
+function renderMapChallenges() {
+  const container = document.getElementById('map-challenges-container');
+  if (!container || !userState || !metadata) return;
+  container.innerHTML = '';
+
+  const fishList = metadata.fishDatabase[selectedMapChallengeFilter] || [];
+  const records = userState.records || [];
+
+  // Check completions for 3 steps
+  // Step 1: All species caught at least once
+  // Step 2: All species caught in Trophy
+  // Step 3: All species caught in Blue Trophy
+  let step1Caught = 0;
+  let step2Trophy = 0;
+  let step3Blue = 0;
+
+  fishList.forEach(fish => {
+    const catchedNormal = records.find(r => r.fish_name.includes(fish.name));
+    const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
+    const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
+
+    if (catchedNormal) step1Caught++;
+    if (catchedTrophy || catchedBlueTrophy) step2Trophy++;
+    if (catchedBlueTrophy) step3Blue++;
+  });
+
+  const totalSpecies = fishList.length;
+
+  const steps = [
+    { num: 1, title: '🟢 Étape 1 : Maître du Lieu', desc: 'Attraper toutes les espèces de la map au moins une fois.', done: step1Caught, total: totalSpecies, reward: '+500 Silver & Title' },
+    { num: 2, title: '🟡 Étape 2 : Chasseur de Trophées', desc: 'Attraper toutes les espèces de la map en version Trophée.', done: step2Trophy, total: totalSpecies, reward: '+2,500 Silver & Badge' },
+    { num: 3, title: '🔵 Étape 3 : Légende Vivante (Trophée Bleu)', desc: 'Attraper toutes les espèces de la map en version Trophée Bleu.', done: step3Blue, total: totalSpecies, reward: '+10,000 Silver & Trophée Or' }
+  ];
+
+  steps.forEach(st => {
+    const isCompleted = st.done >= st.total && st.total > 0;
+    const pct = st.total > 0 ? Math.min(100, Math.floor((st.done / st.total) * 100)) : 0;
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.style.cssText = `border: 1px solid ${isCompleted ? 'var(--success)' : 'rgba(255,255,255,0.15)'}; background: ${isCompleted ? 'rgba(39, 174, 96, 0.15)' : 'rgba(20,25,30,0.8)'}; padding: 14px;`;
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="font-size:1.05rem; margin:0; color:${isCompleted ? 'var(--success)' : '#fff'};">${st.title}</h4>
+        <span style="font-weight:800; font-size:0.85rem; color:${isCompleted ? 'var(--success)' : 'var(--text-muted)'};">${isCompleted ? '✅ ACCOMPLI' : st.done + ' / ' + st.total}</span>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0;">${st.desc}</p>
+      <div style="background-color:rgba(0,0,0,0.5); height:6px; border-radius:3px; overflow:hidden; margin:8px 0;">
+        <div style="background:${isCompleted ? 'var(--success)' : 'var(--primary)'}; height:100%; width:${pct}%;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+        <span style="font-size:0.75rem; color:var(--accent); font-weight:700;">Récompense: ${st.reward}</span>
+        ${isCompleted ? '<span style="font-size:0.75rem; color:var(--success); font-weight:800;">🎉 Débloqué</span>' : '<span style="font-size:0.75rem; color:var(--text-muted);">En cours...</span>'}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const challengeBtns = document.querySelectorAll('#map-challenges-filter .shop-tab-btn');
+  challengeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      challengeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMapChallengeFilter = btn.getAttribute('data-map-challenge-filter');
+      renderMapChallenges();
+    });
+  });
+});
+
 function renderRepair() {
   const grid = document.getElementById('repair-grid');
   grid.innerHTML = '';
@@ -1573,11 +1648,11 @@ function renderRepair() {
     card.innerHTML = `
       <div class="item-info">
         <h4>${u.current_rod} (Canne)</h4>
-        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'};">${durabilityStr}%</span></p>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${durabilityStr}%</span></p>
       </div>
       <div class="item-card-footer">
         <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
-        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('rod', '${u.current_rod}')">Réparer</button>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('rod', '${u.current_rod.replace(/'/g, "\\'")}')">Réparer</button>
       </div>
     `;
     grid.appendChild(card);
@@ -1594,14 +1669,18 @@ function renderRepair() {
     card.innerHTML = `
       <div class="item-info">
         <h4>${u.current_reel} (Moulinet)</h4>
-        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'};">${durabilityStr}%</span></p>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${durabilityStr}%</span></p>
       </div>
       <div class="item-card-footer">
         <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
-        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('reel', '${u.current_reel}')">Réparer</button>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('reel', '${u.current_reel.replace(/'/g, "\\'")}')">Réparer</button>
       </div>
     `;
     grid.appendChild(card);
+  }
+
+  if (!rod && !reel) {
+    grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Aucun équipement actuellement équipé à réparer.</p>';
   }
 }
 
