@@ -18,17 +18,17 @@ router.get('/state', authenticate, async (req, res) => {
       await db.query('UPDATE users SET current_water_body = \'Lac aux moustique\' WHERE id = $1', [req.user.id]);
     }
     
-    if (req.user.current_rod === 'Starter Rod' || req.user.current_rod === 'Siberia Starter Tele') {
-      await db.query(`UPDATE users SET current_rod = 'Comfort FD360' WHERE id = $1`, [req.user.id]);
-      req.user.current_rod = 'Comfort FD360';
+    if (!RODS[req.user.current_rod]) {
+      await db.query(`UPDATE users SET current_rod = 'Kama Comfort FD360' WHERE id = $1`, [req.user.id]);
+      req.user.current_rod = 'Kama Comfort FD360';
     }
-    if (req.user.current_reel === 'Starter Reel' || req.user.current_reel === 'Express Fishing Lacerti 4000S') {
-      await db.query(`UPDATE users SET current_reel = 'Express Fishing Spark 1 2000S' WHERE id = $1`, [req.user.id]);
-      req.user.current_reel = 'Express Fishing Spark 1 2000S';
+    if (!REELS[req.user.current_reel]) {
+      await db.query(`UPDATE users SET current_reel = 'Express Fishing Skarp 2 2000S' WHERE id = $1`, [req.user.id]);
+      req.user.current_reel = 'Express Fishing Skarp 2 2000S';
     }
-    if (req.user.current_line === 'Starter Line') {
-      await db.query(`UPDATE users SET current_line = 'Siberia Mono SS (3.2kg)' WHERE id = $1`, [req.user.id]);
-      req.user.current_line = 'Siberia Mono SS (3.2kg)';
+    if (!LINES[req.user.current_line]) {
+      await db.query(`UPDATE users SET current_line = 'Siberia Mono SS (6kg 150m)' WHERE id = $1`, [req.user.id]);
+      req.user.current_line = 'Siberia Mono SS (6kg 150m)';
     }
     
     const inventory = await db.all('SELECT item_type, item_name, quantity FROM inventory WHERE user_id = $1', [req.user.id]);
