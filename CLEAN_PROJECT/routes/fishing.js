@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../database');
-const { WATER_BODIES, FISH_DATABASE } = require('../data/constants');
+const { WATER_BODIES, FISH_DATABASE, LINES, BAITS } = require('../data/constants');
 const { generateFishToken, verifyFishToken, calculateLevel, getUserStats, authenticate } = require('../utils');
 
 const router = express.Router();
@@ -13,6 +13,28 @@ router.post('/bite', authenticate, async (req, res) => {
 
     if (!wb.styles.includes(activeStyle)) {
       return res.status(400).json({ error: `La technique ${activeStyle} n'est pas autorisée sur ce plan d'eau.` });
+    }
+
+    // Strict Gear subType Compatibility Check against activeStyle
+    // activeStyle can be 'fond', 'leurre', or 'vif'
+    const userLine = LINES[req.user.current_line];
+    const userBait = BAITS[req.user.current_bait];
+
+    if (userLine && userLine.subType && userLine.subType !== activeStyle) {
+      const styleLabel = activeStyle === 'fond' ? 'Pêche de Fond' : (activeStyle === 'leurre' ? 'Pêche au Leurre' : 'Pêche au Vif');
+      return res.status(400).json({ error: `Votre fil équipé (${req.user.current_line}) n'est pas adapté pour la ${styleLabel} ! Changez de fil.` });
+    }
+
+    if (userBait) {
+      if (activeStyle === 'vif' && userBait.category !== 'vifs') {
+        return res.status(400).json({ error: `Vous devez équiper un Vif pour pratiquer la Pêche au Vif !` });
+      }
+      if (activeStyle === 'leurre' && userBait.category !== 'leurres') {
+        return res.status(400).json({ error: `Vous devez équiper un Leurre pour pratiquer la Pêche au Leurre !` });
+      }
+      if (activeStyle === 'fond' && userBait.category === 'leurres') {
+        return res.status(400).json({ error: `Les leurres ne peuvent pas être utilisés en Pêche de Fond ! Équipez un appât.` });
+      }
     }
 
     const speciesList = FISH_DATABASE[map] || FISH_DATABASE['Lac aux moustique'];
