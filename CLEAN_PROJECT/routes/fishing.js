@@ -36,9 +36,20 @@ router.post('/bite', authenticate, async (req, res) => {
     let xpMult = 1.0;
     let baseClicks = 10;
     
-    // Trophies are rare achievements (Blue Trophy: 0.05% = 0.0005, Trophy: 2% = 0.02)
+    // In-Game weather boost (Night = 2x Trophies, Rain = 1.5x Trophies)
+    const now = new Date();
+    const secondsInHour = (now.getMinutes() * 60) + now.getSeconds();
+    const inGameHours = Math.floor(((secondsInHour * 24) % 86400) / 3600);
+    const isNight = inGameHours >= 21 || inGameHours < 5;
+    const isRainy = Math.floor(now.getMinutes() / 15) === 2;
+
+    let trophyBonusMult = 1.0;
+    if (isNight) trophyBonusMult *= 2.0;
+    if (isRainy) trophyBonusMult *= 1.5;
+
+    // Trophies roll (Base: Blue Trophy = 0.05%, Trophy = 2.0%)
     const trophyRoll = Math.random();
-    if (trophyRoll < 0.0005) {
+    if (trophyRoll < (0.0005 * trophyBonusMult)) {
       rarity = 'Trophée Bleu';
       weight = Number((species.blueTrophyW + Math.random() * (species.maxW - species.blueTrophyW)).toFixed(3));
       valMult = 5.0;
