@@ -1070,24 +1070,31 @@ function renderShop(category, subFilter = 'all') {
       const inventoryItem = userState.inventory.find(i => i.item_name === name);
       const ownedCount = inventoryItem ? inventoryItem.quantity : 0;
       const currentCost = Math.floor(config.baseCost * Math.pow(1.15, ownedCount));
+      const userLevel = userState.user.level;
+      const isLocked = config.levelRequired && userLevel < config.levelRequired;
 
       const card = document.createElement('div');
-      card.className = 'item-card';
+      card.className = `item-card ${isLocked ? 'locked-item' : ''}`;
       const slug = getImageSlug(name);
       card.innerHTML = `
         <div class="card-img-container">
           <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
           <div class="fallback-icon gear-fallback">🤖</div>
+          ${isLocked ? '<div class="lock-overlay">🔒</div>' : ''}
         </div>
         <div class="item-info">
           <h4>${name}</h4>
           <p>${config.desc}</p>
           <p style="margin-top: 4px; color: var(--primary);">Prod: +${config.sps} Silver/s</p>
           <span class="item-badge">Possédé: ${ownedCount} / ${userState.user.has_ameliorateur ? 7 : 5}</span>
+          ${isLocked ? `<p style="color:var(--danger); font-size:0.75rem; font-weight:600; margin-top:4px;">🔒 Déblocage : Niveau ${config.levelRequired}</p>` : ''}
         </div>
         <div class="item-card-footer">
           <span class="item-price">${currentCost} 🪙</span>
-          <button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name}', 'auto_fisher')">Acheter</button>
+          ${isLocked ?
+            `<button class="btn btn-sm" disabled style="background:rgba(255,255,255,0.03); color:var(--text-muted); cursor:not-allowed;">Niv ${config.levelRequired}</button>` :
+            `<button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name.replace(/'/g, "\\'")}', 'auto_fisher')">Acheter</button>`
+          }
         </div>
       `;
       grid.appendChild(card);
@@ -1099,24 +1106,31 @@ function renderShop(category, subFilter = 'all') {
       const inventoryItem = userState.inventory.find(i => i.item_name === name);
       const ownedCount = inventoryItem ? inventoryItem.quantity : 0;
       const currentCost = Math.floor(config.baseCost * Math.pow(1.15, ownedCount));
+      const userLevel = userState.user.level;
+      const isLocked = config.levelRequired && userLevel < config.levelRequired;
 
       const card = document.createElement('div');
-      card.className = 'item-card';
+      card.className = `item-card ${isLocked ? 'locked-item' : ''}`;
       const slug = getImageSlug(name);
       card.innerHTML = `
         <div class="card-img-container">
           <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
           <div class="fallback-icon gear-fallback">🖱️</div>
+          ${isLocked ? '<div class="lock-overlay">🔒</div>' : ''}
         </div>
         <div class="item-info">
           <h4>${name}</h4>
           <p>${config.desc}</p>
           <p style="margin-top: 4px; color: var(--accent);">Prod: +${config.sps} Silver/s</p>
           <span class="item-badge">Possédé: ${ownedCount} / ${userState.user.has_ameliorateur ? 7 : 5}</span>
+          ${isLocked ? `<p style="color:var(--danger); font-size:0.75rem; font-weight:600; margin-top:4px;">🔒 Déblocage : Niveau ${config.levelRequired}</p>` : ''}
         </div>
         <div class="item-card-footer">
           <span class="item-price">${currentCost} 🪙</span>
-          <button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name}', 'auto_clicker')">Acheter</button>
+          ${isLocked ?
+            `<button class="btn btn-sm" disabled style="background:rgba(255,255,255,0.03); color:var(--text-muted); cursor:not-allowed;">Niv ${config.levelRequired}</button>` :
+            `<button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name.replace(/'/g, "\\'")}', 'auto_clicker')">Acheter</button>`
+          }
         </div>
       `;
       grid.appendChild(card);
