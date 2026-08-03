@@ -906,10 +906,48 @@ shopTabs.forEach(tab => {
   });
 });
 
-function renderShop(category) {
+let currentSubFilter = 'all';
+
+function renderShop(category, subFilter = 'all') {
   const grid = document.getElementById('shop-grid');
+  const subFilterContainer = document.getElementById('shop-subfilter-tabs');
   grid.innerHTML = '';
   if (!metadata || !userState) return;
+
+  // Manage subfilters visibility
+  if (['rods', 'reels', 'leurres'].includes(category)) {
+    subFilterContainer.style.display = 'flex';
+    subFilterContainer.innerHTML = '';
+    
+    let subTypes = [];
+    if (category === 'rods' || category === 'reels') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'fond', label: 'Pêche au fond' },
+        { id: 'spinning', label: 'Spinning' },
+        { id: 'mer', label: 'Pêche en Mer' }
+      ];
+    } else if (category === 'leurres') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'dure', label: 'Leurres durs' },
+        { id: 'surface', label: 'Surface' },
+        { id: 'souple', label: 'Leurres souples' },
+        { id: 'cuillere', label: 'Cuillères' },
+        { id: 'mer', label: 'Leurres de Mer' }
+      ];
+    }
+
+    subTypes.forEach(st => {
+      const btn = document.createElement('button');
+      btn.className = `shop-tab-btn ${subFilter === st.id ? 'active' : ''}`;
+      btn.innerText = st.label;
+      btn.onclick = () => renderShop(category, st.id);
+      subFilterContainer.appendChild(btn);
+    });
+  } else {
+    subFilterContainer.style.display = 'none';
+  }
 
   if (category === 'auto') {
     // Render Auto Fishers
@@ -1037,6 +1075,9 @@ function renderShop(category) {
       const data = items[name];
       if (data.cost === 0) return;
       if (isBaitCategory && data.category !== category) return;
+
+      // Filter by subType if specified
+      if (subFilter !== 'all' && data.subType && data.subType !== subFilter) return;
 
       const userLevel = userState.user.level;
       const isLocked = data.levelRequired && userLevel < data.levelRequired;
