@@ -777,12 +777,15 @@ function renderBourriche() {
     let badgeImg = 'badge_normal.png';
     let badgeLabel = 'Tagué';
 
-    if (fish.fish_name.includes('(Trophée Bleu)')) { 
+    const fullName = fish.fish_name || '';
+    if (fullName.includes('Trophée Bleu')) { 
       cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
-    } else if (fish.fish_name.includes('(Trophée)')) { 
+    } else if (fullName.includes('Trophée')) { 
       cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
-    } else if (fish.fish_name.includes('(Espèce Rare)')) {
+    } else if (fullName.includes('Espèce Rare') || fullName.includes('Rare')) {
       badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    } else {
+      badgeImg = 'badge_normal.png'; badgeLabel = fullName.includes('Non-Tagué') ? 'Non-Tagué' : 'Tagué';
     }
     
     const baseName = getBaseFishName(fish.fish_name);
@@ -1518,12 +1521,15 @@ function renderPrises() {
     let badgeImg = 'badge_normal.png';
     let badgeLabel = 'Tagué';
 
-    if (fish.fish_name.includes('(Trophée Bleu)')) { 
+    const fullName = fish.fish_name || '';
+    if (fullName.includes('Trophée Bleu')) { 
       cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
-    } else if (fish.fish_name.includes('(Trophée)')) { 
+    } else if (fullName.includes('Trophée')) { 
       cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
-    } else if (fish.fish_name.includes('(Espèce Rare)')) {
+    } else if (fullName.includes('Espèce Rare') || fullName.includes('Rare')) {
       badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    } else {
+      badgeImg = 'badge_normal.png'; badgeLabel = fullName.includes('Non-Tagué') ? 'Non-Tagué' : 'Tagué';
     }
     
     const baseName = getBaseFishName(fish.fish_name);
