@@ -71,15 +71,15 @@ router.post('/bite', authenticate, async (req, res) => {
     const silverValue = Number(((weight * species.valuePerKg * valMult) / 2.0).toFixed(2));
     const xpValue = Math.floor(weight * xpPerKg * xpMult);
 
-    let mapHPFactor = 1.8;
-    if (map === 'Rivière Belaya') mapHPFactor = 6.5;
-    else if (map === 'Lac cuivré') mapHPFactor = 32.0;
-    else if (map === 'Mer de Norvège') mapHPFactor = 260.0;
+    let mapHPFactor = 3.0;
+    if (map === 'Rivière Belaya') mapHPFactor = 10.0;
+    else if (map === 'Lac cuivré') mapHPFactor = 50.0;
+    else if (map === 'Mer de Norvège') mapHPFactor = 400.0;
 
-    const hpExp = Math.pow(weight, 1.2); 
+    const hpExp = Math.pow(weight, 1.5); 
     const clicksRequired = Math.max(5, Math.floor((baseClicks + (hpExp * 2.5)) * mapHPFactor));
 
-    // Combat time calculated at ~20% of clicksRequired (min 8s, max 600s) requiring 5 CPS minimum
+    // Combat time calculated at 20% of clicksRequired (min 8s, max 600s)
     const combatTime = Math.min(600, Math.max(8, Math.floor(clicksRequired * 0.2)));
     const startTime = Date.now();
 
