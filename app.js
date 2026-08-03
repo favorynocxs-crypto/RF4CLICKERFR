@@ -1,0 +1,2014 @@
+const API_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+  ? ''
+  : 'https://rf4clickerfr.onrender.com';
+
+// Slug helpers for authentic images loading
+function getImageSlug(name) {
+  return name.replace(/\s*\(.*?\)\s*/g, '')  // Strip (6kg 150m) etc.
+             .normalize("NFD")
+             .replace(/[\u0300-\u036f]/g, "")
+             .toLowerCase()
+             .replace(/[^a-z0-9]/g, "_")
+             .replace(/__+/g, "_")
+             .replace(/^_|_$/g, "");
+}
+function getBaseFishName(fullName) {
+  return fullName.split(' (')[0];
+}
+
+// Global state variables
+let token = localStorage.getItem('rf4_token') || null;
+let username = localStorage.getItem('rf4_username') || null;
+let metadata = null;
+let userState = null;
+
+// Game counters
+let currentSilver = 0.0;
+let spsRate = 0.0;
+let spcRate = 1.0;
+let lastSyncTime = Date.now();
+
+// Fishing RPG Game State
+let fishingState = 'idle'; // 'idle', 'casting', 'bite', 'combat'
+let activeFish = null;
+let combatProgress = 50.0;
+let combatDrainInterval = null;
+let escapeTimeout = null;
+
+// Elements
+const authScreen = document.getElementById('auth-screen');
+const gameScreen = document.getElementById('game-screen');
+const authForm = document.getElementById('auth-form');
+const authTitle = document.getElementById('auth-title');
+const toggleAuth = document.getElementById('toggle-auth');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const authBtn = document.getElementById('auth-btn');
+
+const logoutBtn = document.getElementById('logout-btn');
+const hudUsername = document.getElementById('hud-username');
+const hudLvlVal = document.getElementById('hud-lvl-val');
+const xpProgress = document.getElementById('xp-progress');
+const hudXpVal = document.getElementById('hud-xp-val');
+
+const setupRod = document.getElementById('setup-rod');
+const setupReel = document.getElementById('setup-reel');
+const setupLine = document.getElementById('setup-line');
+const setupBait = document.getElementById('setup-bait');
+
+const currentLocName = document.getElementById('current-location-name');
+const cookieSilverVal = document.getElementById('cookie-silver-val');
+const cookieSpsVal = document.getElementById('cookie-sps-val');
+const cookieSpcVal = document.getElementById('cookie-spc-val');
+
+// Fishing Action Zone
+const fishingZoneClicker = document.getElementById('fishing-zone-clicker');
+const fishingStatusText = document.getElementById('fishing-status-text');
+const biteProgressContainer = document.getElementById('bite-progress-container');
+const biteProgressFill = document.getElementById('bite-progress-fill');
+const combatContainer = document.getElementById('combat-container');
+const combatFishName = document.getElementById('combat-fish-name');
+const combatProgressFill = document.getElementById('combat-progress-fill');
+const fishingActionHint = document.getElementById('fishing-action-hint');
+
+// Sidebar Tabs & grids
+const ownedHelpersList = document.getElementById('owned-helpers-list');
+const bourricheGrid = document.getElementById('bourriche-grid');
+const bourricheCountLbl = document.getElementById('bourriche-count-lbl');
+const sellBourricheBtn = document.getElementById('sell-bourriche-btn');
+const questsList = document.getElementById('quests-list');
+
+const offlineSplash = document.getElementById('offline-splash');
+const offlineSecondsVal = document.getElementById('offline-seconds-val');
+const offlineSilverReward = document.getElementById('offline-silver-reward');
+const offlineCloseBtn = document.getElementById('offline-close-btn');
+
+// Toast Notification
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  toast.innerText = message;
+  toast.className = `toast show ${type}`;
+  setTimeout(() => {
+    toast.className = 'toast';
+  }, 4000);
+}
+
+// Check auth state on start
+async function init() {
+  await fetchMetadata();
+  if (token) {
+    showScreen('game-screen');
+    await refreshState();
+    startLoops();
+  } else {
+    showScreen('auth-screen');
+  }
+  setupTabs();
+  setupClickerEvents();
+}
+
+function showScreen(screenId) {
+  authScreen.classList.remove('active');
+  gameScreen.classList.remove('active');
+  document.getElementById(screenId).classList.add('active');
+}
+
+// Fetch constant game metadata
+async function fetchMetadata() {
+  const statusEl = document.getElementById('server-status');
+  try {
+    const res = await fetch(`${API_URL}/api/metadata`);
+    if (!res.ok) throw new Error("Metadata request failed");
+    metadata = await res.json();
+    if (statusEl) {
+      statusEl.style.display = 'none';
+    }
+  } catch (err) {
+    console.warn("API Server offline, retrying...", err);
+    if (statusEl) {
+      statusEl.innerText = "Serveur en veille. Réveil en cours (veuillez patienter)...";
+    }
+    setTimeout(fetchMetadata, 3000);
+  }
+}
+
+// Refresh user state (vivier, quests, inventory)
+async function refreshState() {
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_URL}/api/state`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.status === 401) {
+      logout();
+      return;
+    }
+    const data = await res.json();
+    userState = data;
+    
+    currentSilver = data.user.silver;
+    spsRate = data.stats.sps;
+    spcRate = data.stats.spc;
+    
+    updateHUD();
+    renderInventory();
+    renderShop('auto'); // default shop view
+    renderTravel();
+    renderOwnedHelpers();
+    renderBourriche();
+    renderQuests();
+    renderAccount();
+    renderCarnet();
+
+    // Check offline progress
+    if (data.offline && data.offline.silverEarned > 0) {
+      offlineSecondsVal.innerText = data.offline.seconds;
+      offlineSilverReward.innerText = `+${data.offline.silverEarned.toFixed(2)}`;
+      offlineSplash.classList.add('active');
+    }
+  } catch (err) {
+    console.error('State sync error:', err);
+  }
+}
+
+function startLoops() {
+  // 1. Tick silver locally at 60fps for visual excellence
+  let lastTick = performance.now();
+  function tick() {
+    if (!token) return;
+    const now = performance.now();
+    const dt = (now - lastTick) / 1000;
+    lastTick = now;
+
+    if (spsRate > 0) {
+      currentSilver += spsRate * dt;
+      cookieSilverVal.innerText = currentSilver.toFixed(2);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // 2. Synchronize active state with server every 10 seconds
+  setInterval(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/sync`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        currentSilver = data.newSilver;
+        cookieSilverVal.innerText = currentSilver.toFixed(2);
+      }
+    } catch (e) {}
+  }, 10000);
+
+  // 3. Periodic leaderboard & live clock updates
+  setInterval(() => {
+    if (!token) return;
+    const tw = getInGameTimeAndWeather();
+    const clockEl = document.getElementById('hud-clock-time');
+    const weatherEl = document.getElementById('hud-weather-status');
+    if (clockEl) clockEl.innerText = tw.timeStr;
+    if (weatherEl) weatherEl.innerText = tw.weatherStr;
+  }, 1000);
+
+  setInterval(() => {
+    if (token) {
+      loadLeaderboard();
+    }
+  }, 12000);
+}
+
+// Background images for water bodies
+const WATER_BODIES_BG = {
+  'Lac aux moustique': 'map_moustique.jpg',
+  'Rivière Belaya': 'map_belaya.jpg',
+  'Lac cuivré': 'map_cuivre.jpg',
+  'Mer de Norvège': 'map_norvege.jpg'
+};
+
+// In-game time system: 1 hour IRL (3600s) = 24 hours In-Game (86400s) -> 1s IRL = 24s In-Game
+function getInGameTimeAndWeather() {
+  const now = new Date();
+  const secondsInHour = (now.getMinutes() * 60) + now.getSeconds() + (now.getMilliseconds() / 1000);
+  const totalInGameSeconds = (secondsInHour * 24) % 86400;
+  
+  const inGameHours = Math.floor(totalInGameSeconds / 3600);
+  const inGameMinutes = Math.floor((totalInGameSeconds % 3600) / 60);
+
+  const formattedHours = String(inGameHours).padStart(2, '0');
+  const formattedMinutes = String(inGameMinutes).padStart(2, '0');
+
+  const isNight = inGameHours >= 21 || inGameHours < 5;
+
+  // Weather pattern based on 20-min cycles
+  const cycleIndex = Math.floor(now.getMinutes() / 15);
+  let weatherText = '☀️ Ensoleillé';
+  if (cycleIndex === 1) weatherText = '☁️ Nuageux';
+  else if (cycleIndex === 2) weatherText = '🌧️ Pluvieux';
+  else if (cycleIndex === 3) weatherText = '🌫️ Brumeux';
+
+  if (isNight) weatherText = `🌙 Nuit (${weatherText.split(' ')[1] || 'Calme'})`;
+
+  return {
+    timeStr: `🕒 ${formattedHours}:${formattedMinutes}`,
+    weatherStr: weatherText,
+    isNight,
+    isRainy: weatherText.includes('Pluvieux')
+  };
+}
+
+function updateHUD() {
+  if (!userState) return;
+  const { user } = userState;
+  
+  // Update Clock & Weather Widget
+  const tw = getInGameTimeAndWeather();
+  const clockEl = document.getElementById('hud-clock-time');
+  const weatherEl = document.getElementById('hud-weather-status');
+  if (clockEl) clockEl.innerText = tw.timeStr;
+  if (weatherEl) weatherEl.innerText = tw.weatherStr;
+  
+  if (cookieSilverVal) cookieSilverVal.innerText = currentSilver.toFixed(2);
+  if (cookieSpsVal) cookieSpsVal.innerText = spsRate.toFixed(2);
+  if (currentLocName) currentLocName.innerText = user.current_water_body;
+  
+  if (hudLvlVal) hudLvlVal.innerText = user.level;
+
+  // Change background dynamically on the game screen element instead of body
+  const bgImg = WATER_BODIES_BG[user.current_water_body] || 'map_moustique.jpg';
+  const encodedPath = encodeURI(`./images/${bgImg}`);
+  document.getElementById('game-screen').style.backgroundImage = `url("${encodedPath}")`;
+
+  // XP calculation
+  const currentLvlXP = (user.level - 1) * (user.level - 1) * 250;
+  const nextLvlXP = user.level * user.level * 250;
+  const progressPercent = Math.min(100, ((user.xp - currentLvlXP) / (nextLvlXP - currentLvlXP)) * 100);
+  
+  if (xpProgress) xpProgress.style.width = `${progressPercent}%`;
+  if (hudXpVal) hudXpVal.innerText = `${user.xp} / ${nextLvlXP} XP`;
+
+  // Energy bar HUD update
+  const energyVal = user.energy !== undefined ? user.energy : 100.0;
+  const energyProgress = document.getElementById('energy-progress');
+  const hudEnergyVal = document.getElementById('hud-energy-val');
+  if (energyProgress && hudEnergyVal) {
+    energyProgress.style.width = `${Math.max(0, Math.min(100, energyVal))}%`;
+    energyProgress.style.background = energyVal < 30.0 ? 'var(--danger)' : 'var(--success)';
+    hudEnergyVal.innerText = `⚡ ${energyVal.toFixed(1)}%`;
+  }
+
+  // Setup items
+  setupRod.innerText = user.current_rod;
+  setupReel.innerText = user.current_reel;
+  setupLine.innerText = user.current_line;
+  setupBait.innerText = user.current_bait;
+
+  // Sync style selection
+  updateStyleSelectorUI();
+}
+
+// Authentication Logic
+let isRegisterMode = false;
+toggleAuth.addEventListener('click', () => {
+  isRegisterMode = !isRegisterMode;
+  authTitle.innerText = isRegisterMode ? 'Inscription' : 'Connexion';
+  authBtn.innerText = isRegisterMode ? 'Créer un compte' : 'Se connecter';
+  toggleAuth.innerText = isRegisterMode ? 'Se connecter' : 'Créer un compte';
+});
+
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = usernameInput.value;
+  const password = passwordInput.value;
+
+  const url = isRegisterMode ? `${API_URL}/api/register` : `${API_URL}/api/login`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error, 'danger');
+      return;
+    }
+
+    if (isRegisterMode) {
+      showToast('Compte créé avec succès ! Connectez-vous.', 'success');
+      isRegisterMode = false;
+      authTitle.innerText = 'Connexion';
+      authBtn.innerText = 'Se connecter';
+      toggleAuth.innerText = 'Créer un compte';
+    } else {
+      token = data.token;
+      localStorage.setItem('rf4_token', token);
+      localStorage.setItem('rf4_username', data.username);
+      showToast('Connexion réussie', 'success');
+      showScreen('game-screen');
+      await refreshState();
+      startLoops();
+    }
+  } catch (err) {
+    showToast('Erreur serveur', 'danger');
+  }
+});
+
+logoutBtn.addEventListener('click', logout);
+function logout() {
+  token = null;
+  localStorage.removeItem('rf4_token');
+  localStorage.removeItem('rf4_username');
+  showScreen('auth-screen');
+}
+
+// Tabs switching logic
+function setupTabs() {
+  const tabs = document.querySelectorAll('.tab-btn');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      tab.classList.add('active');
+      const target = tab.getAttribute('data-tab');
+      document.getElementById(target).classList.add('active');
+
+      if (target === 'tab-leaderboard') loadLeaderboard();
+      if (target === 'tab-inventory') renderInventory();
+      if (target === 'tab-shop') renderShop('auto');
+      if (target === 'tab-bourriche') renderBourriche();
+      if (target === 'tab-quests') renderQuests();
+      if (target === 'tab-travel') renderTravel();
+      if (target === 'tab-prises') renderPrises();
+      if (target === 'tab-map') renderMapInfo();
+      if (target === 'tab-stats') renderStats();
+      if (target === 'tab-repair') renderRepair();
+      if (target === 'tab-map-challenges') renderMapChallenges();
+    });
+  });
+}
+
+// ACTIVE FISHING & COMBAT ACTIONS
+function setupClickerEvents() {
+  fishingZoneClicker.addEventListener('click', (e) => {
+    if (!token) return;
+
+    if (fishingState === 'idle') {
+      startCombatDirect();
+    } else if (fishingState === 'combat') {
+      // Deal damage if clicking anywhere in the combat area
+      if (e.target.closest('#combat-container')) {
+        dealDamage(e);
+      }
+    }
+  });
+
+  sellBourricheBtn.addEventListener('click', sellBourriche);
+
+  // Setup Technique Style buttons
+  document.querySelectorAll('.style-select-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const selectedStyle = e.target.getAttribute('data-style');
+      changeFishingStyle(selectedStyle);
+    });
+  });
+}
+
+async function changeFishingStyle(style) {
+  if (!token || fishingState !== 'idle') return;
+  try {
+    const res = await fetch(`${API_URL}/api/style`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ style })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      userState.user.current_style = style;
+      showToast(`Style de pêche changé : ${translateStyle(style)} !`, 'success');
+      updateStyleSelectorUI();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {}
+}
+
+function translateStyle(s) {
+  if (s === 'fond') return 'Pêche de Fond';
+  if (s === 'leurre') return 'Pêche au Leurre';
+  if (s === 'vif') return 'Pêche au Vif';
+  return s;
+}
+
+function updateStyleSelectorUI() {
+  if (!userState || !metadata) return;
+  const user = userState.user;
+  const allowedStyles = metadata.waterBodies[user.current_water_body].styles || ['fond', 'leurre'];
+
+  document.querySelectorAll('.style-select-btn').forEach(btn => {
+    const s = btn.getAttribute('data-style');
+    if (allowedStyles.includes(s)) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = '0.25';
+      if (s === user.current_style) {
+        // Fallback to fond if style is no longer allowed (e.g. after traveling)
+        setTimeout(() => changeFishingStyle('fond'), 50);
+      }
+    }
+
+    if (s === user.current_style) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+// Cast Line & Wait progress simulation
+// Active Combat Variables for Direct Clicker
+let combatClicksDealt = 0;
+let combatMaxClicks = 10;
+let combatTimeRemaining = 8.0;
+let combatTimerInterval = null;
+
+async function startCombatDirect() {
+  if (fishingState !== 'idle' || !token) return;
+  
+  fishingState = 'fetching';
+  fishingStatusText.innerText = "FERRAGE DU POISSON...";
+  fishingActionHint.innerText = "Veuillez patienter...";
+  
+  try {
+    const res = await fetch(`${API_URL}/api/fish/bite`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (res.status === 403) {
+      const errorData = await res.json();
+      resetFishingState();
+      showToast(errorData.error, 'danger');
+      logout();
+      return;
+    }
+    
+    if (!res.ok) {
+      resetFishingState();
+      showToast("Le poisson s'est enfui.", 'danger');
+      return;
+    }
+    
+    const data = await res.json();
+    activeFish = data;
+    fishingState = 'combat';
+    
+    // Setup combat parameters
+    combatClicksDealt = 0;
+    combatMaxClicks = data.clicksRequired;
+    combatTimeRemaining = data.combatTime || 8.0; 
+    
+    // Update UI elements
+    fishingStatusText.style.display = 'none';
+    combatContainer.style.display = 'block';
+    combatFishName.innerText = getBaseFishName(data.fishName);
+    
+    // Set Combat Fish Image (Hide rarity for suspense!)
+    const combatFishImgEl = document.getElementById('combat-fish-img');
+    if (combatFishImgEl) {
+      const slug = getImageSlug(data.fishName);
+      combatFishImgEl.src = `images/fish/${slug}.png`;
+      combatFishImgEl.onerror = () => { combatFishImgEl.src = 'images/fish/carpe_miroir.png'; };
+    }
+    
+    fishingActionHint.innerText = "CLIQUEZ À RÉPÉTITION POUR INFLIGER DES DÉGÂTS !";
+    updateCombatUI();
+
+    // Timer countdown loop
+    combatTimerInterval = setInterval(() => {
+      if (fishingState !== 'combat') {
+        clearInterval(combatTimerInterval);
+        return;
+      }
+      
+      combatTimeRemaining -= 0.1;
+      if (combatTimeRemaining <= 0) {
+        clearInterval(combatTimerInterval);
+        resetFishingState();
+        showToast("Le poisson s'est échappé ! Temps écoulé. 🐟💨", 'danger');
+      } else {
+        updateCombatUI();
+      }
+    }, 100);
+  } catch (err) {
+    resetFishingState();
+  }
+}
+
+function updateCombatUI() {
+  if (combatProgressFill) {
+    const pct = (combatClicksDealt / combatMaxClicks) * 100;
+    combatProgressFill.style.width = `${Math.min(100, pct)}%`;
+  }
+
+  const timerEl = document.getElementById('combat-timer-text');
+  if (timerEl) {
+    timerEl.innerText = `Temps restant : ${Math.max(0, combatTimeRemaining).toFixed(1)}s`;
+  }
+  
+  const clicksEl = document.getElementById('combat-clicks-left');
+  if (clicksEl) {
+    clicksEl.innerText = `Dégâts : ${Math.min(combatMaxClicks, Math.floor(combatClicksDealt))} / ${combatMaxClicks}`;
+  }
+}
+
+let userClickTimestamps = [];
+
+function dealDamage(e) {
+  if (fishingState !== 'combat' || !activeFish) return;
+
+  const now = Date.now();
+  userClickTimestamps.push(now);
+  // Keep only clicks within the last 1000ms (1 second)
+  userClickTimestamps = userClickTimestamps.filter(t => now - t <= 1000);
+
+  // If CPS > 15, disconnect user directly
+  if (userClickTimestamps.length > 15) {
+    userClickTimestamps = [];
+    resetFishingState();
+    showToast("Vitesse de clic excessive (+15 CPS) ! Déconnexion de sécurité.", "danger");
+    logout();
+    return;
+  }
+
+  // Calculate total critical hit chance
+  let totalCritChance = userState.user.crit_chance_bonus || 0.0;
+  if (userState.user.current_line && metadata && metadata.lines && metadata.lines[userState.user.current_line]) {
+    totalCritChance += metadata.lines[userState.user.current_line].critChance || 0;
+  }
+
+  // Roll for critical hit
+  let finalDamage = spcRate;
+  let isCrit = false;
+  if (Math.random() < totalCritChance) {
+    finalDamage *= 2.0; // Critical hits do 2x damage
+    isCrit = true;
+  }
+
+  // Clicks dealt is increased by final damage
+  combatClicksDealt += finalDamage;
+  updateCombatUI();
+
+  // Show floating damage text
+  createFloatingText(e.clientX, e.clientY, isCrit ? 'CRITIQUE !' : `-${finalDamage.toFixed(1)}`, isCrit ? 'var(--danger)' : '#fff');
+
+  // Interactive Click Animation on the Fish Image
+  const combatFishImgEl = document.getElementById('combat-fish-img');
+  if (combatFishImgEl) {
+    combatFishImgEl.style.transform = 'scale(1.18) rotate(-4deg)';
+    setTimeout(() => {
+      combatFishImgEl.style.transform = 'scale(1.0) rotate(0deg)';
+    }, 60);
+  }
+
+  // Visual splash effect
+  createSplashVisual(e.clientX, e.clientY);
+
+  if (combatClicksDealt >= combatMaxClicks) {
+    if (combatTimerInterval) clearInterval(combatTimerInterval);
+    landFish();
+  }
+}
+
+async function landFish() {
+  fishingState = 'landing';
+  fishingActionHint.innerText = "Épuisette en cours...";
+  lastCatchTime = Date.now(); // Reset Anti-AFK timer
+
+  try {
+    const timeSpentSeconds = Math.max(1, Math.round(activeFish.combatTime - combatTimeRemaining));
+
+    const res = await fetch(`${API_URL}/api/fish/land`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ token: activeFish.token, timeSpent: timeSpentSeconds })
+    });
+
+    if (res.status === 403) {
+      const errorData = await res.json();
+      resetFishingState();
+      showToast(errorData.error, 'danger');
+      logout();
+      return;
+    }
+
+    const data = await res.json();
+    if (res.ok) {
+      // Trigger authentic RF4 victory catch overlay modal
+      showCatchOverlay(data);
+
+      // Refresh state
+      await refreshState();
+      
+      if (data.levelUp) {
+        showToast(`FÉLICITATIONS ! Passage au Niveau ${data.levelUp} ! 🌟`, 'success');
+      }
+    } else {
+      showToast(data.error, 'danger');
+      resetFishingState();
+    }
+  } catch (err) {
+    showToast("Erreur lors de la capture.", 'danger');
+    resetFishingState();
+  }
+}
+
+let activeCatchData = null;
+
+function showCatchOverlay(data) {
+  activeCatchData = data;
+  const modal = document.getElementById('catch-overlay');
+  if (!modal) {
+    resetFishingState();
+    return;
+  }
+
+  document.getElementById('catch-fish-name').innerText = getBaseFishName(data.fishName);
+  document.getElementById('catch-fish-weight').innerText = data.weight.toFixed(3);
+  document.getElementById('catch-fish-length').innerText = data.lengthCm || Math.max(12, Math.floor(Math.pow(data.weight, 0.45) * 28));
+
+  // Rarity Badge config
+  const badgeImgEl = document.getElementById('catch-badge-img');
+  const badgeLabelEl = document.getElementById('catch-badge-label');
+  const badgeContainer = document.getElementById('catch-rarity-badge-container');
+
+  const rarity = data.rarity || 'Non-Tagué';
+  
+  if (rarity.includes('Non-Tagué')) {
+    // Non-tagué means no badge
+    badgeContainer.style.display = 'none';
+  } else {
+    badgeContainer.style.display = 'flex';
+    if (rarity.includes('Trophée Bleu')) {
+      badgeImgEl.src = 'images/badge_blue_trophy.png';
+      badgeLabelEl.innerText = 'Trophée Bleu';
+      badgeContainer.style.background = 'linear-gradient(135deg, #3498db, #2980b9)';
+    } else if (rarity.includes('Trophée')) {
+      badgeImgEl.src = 'images/badge_trophy.png';
+      badgeLabelEl.innerText = 'Trophée';
+      badgeContainer.style.background = 'linear-gradient(135deg, #f1c40f, #f39c12)';
+    } else if (rarity.includes('Rare')) {
+      badgeImgEl.src = 'images/badge_rare.png';
+      badgeLabelEl.innerText = 'Rare';
+      badgeContainer.style.background = 'linear-gradient(135deg, #9b59b6, #8e44ad)';
+    } else {
+      badgeImgEl.src = 'images/badge_normal.png';
+      badgeLabelEl.innerText = 'Tagué';
+      badgeContainer.style.background = 'linear-gradient(135deg, #2ecc71, #27ae60)';
+    }
+  }
+
+  // Fish Hero Image
+  const slug = getImageSlug(data.fishName);
+  const fishImgEl = document.getElementById('catch-fish-img');
+  fishImgEl.src = `images/fish/${slug}.png`;
+  fishImgEl.onerror = () => { fishImgEl.src = 'images/fish/carpe_miroir.png'; };
+
+  // Rewards
+  document.getElementById('catch-xp-base').innerText = `+${data.xpGained}`;
+  const releaseBonus = Math.floor(data.xpGained * 0.3);
+  document.getElementById('catch-xp-release').innerText = `+${releaseBonus} XP`;
+  document.getElementById('catch-silver-val').innerText = `+${data.silverValue.toFixed(2)}`;
+
+  // Bind Buttons
+  const keepBtn = document.getElementById('catch-keep-btn');
+  const releaseBtn = document.getElementById('catch-release-btn');
+
+  keepBtn.onclick = () => {
+    modal.style.display = 'none';
+    showToast(`Poisson conservé dans le vivier ! (+${data.xpGained} XP)`, 'success');
+    resetFishingState();
+  };
+
+  releaseBtn.onclick = async () => {
+    modal.style.display = 'none';
+    if (data.catchId) {
+      try {
+        const res = await fetch(`${API_URL}/api/fish/release`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ catchId: data.catchId })
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          showToast(`Poisson relâché ! Bonus de +${resData.bonusXP} XP accordé ! 🌿`, 'success');
+          await refreshState();
+        }
+      } catch (err) {
+        showToast("Erreur lors de la remise à l'eau", "danger");
+      }
+    }
+    resetFishingState();
+  };
+
+  modal.style.display = 'flex';
+}
+
+function resetFishingState() {
+  fishingState = 'idle';
+  activeFish = null;
+  combatClicksDealt = 0;
+  if (combatTimerInterval) clearInterval(combatTimerInterval);
+
+  if (biteProgressContainer) biteProgressContainer.style.display = 'none';
+  if (combatContainer) combatContainer.style.display = 'none';
+  if (fishingStatusText) {
+    fishingStatusText.style.display = 'block';
+    fishingStatusText.innerText = "CLIQUEZ POUR PÊCHER";
+  }
+  if (fishingActionHint) {
+    fishingActionHint.innerText = "Cliquez sur la zone ci-dessus pour ferrer un poisson et le combattre !";
+  }
+}
+
+function createSplashVisual(x, y) {
+  const splash = document.createElement('div');
+  splash.className = 'click-splash';
+  splash.style.left = `${x}px`;
+  splash.style.top = `${y}px`;
+  document.body.appendChild(splash);
+  setTimeout(() => splash.remove(), 400);
+}
+
+function createFloatingText(x, y, text, color) {
+  const el = document.createElement('div');
+  el.innerText = text;
+  el.style.position = 'fixed';
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.style.color = color;
+  el.style.fontWeight = '900';
+  el.style.fontSize = '1.5rem';
+  el.style.textShadow = '0 2px 4px rgba(0,0,0,0.8)';
+  el.style.pointerEvents = 'none';
+  el.style.zIndex = '9999';
+  el.style.transition = 'all 0.5s ease-out';
+  el.style.transform = 'translate(-50%, -50%)';
+  document.body.appendChild(el);
+
+  requestAnimationFrame(() => {
+    el.style.top = `${y - 60}px`;
+    el.style.opacity = '0';
+  });
+
+  setTimeout(() => el.remove(), 500);
+}
+
+// BOURRICHE (Vivier) RENDERING
+function renderBourriche() {
+  bourricheGrid.innerHTML = '';
+  if (!userState || !userState.vivier) return;
+
+  const fishList = userState.vivier;
+  const unsoldFishes = fishList.filter(f => !f.sold);
+  bourricheCountLbl.innerText = `${unsoldFishes.length} poisson(s) à vendre`;
+
+  if (unsoldFishes.length === 0) {
+    bourricheGrid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Bourriche vide. Allez pêcher !</p>';
+    return;
+  }
+
+  unsoldFishes.forEach(fish => {
+    const card = document.createElement('div');
+    
+    let cardClass = 'item-card fish-card';
+    let labelClass = 'rarity-tague';
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+
+    const fullName = fish.fish_name || '';
+    if (fullName.includes('Trophée Bleu')) { 
+      cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
+    } else if (fullName.includes('Trophée')) { 
+      cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
+    } else if (fullName.includes('Espèce Rare') || fullName.includes('Rare')) {
+      badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    } else {
+      badgeImg = 'badge_normal.png'; badgeLabel = fullName.includes('Non-Tagué') ? 'Non-Tagué' : 'Tagué';
+    }
+    
+    const baseName = getBaseFishName(fish.fish_name);
+    const slug = getImageSlug(baseName);
+
+    card.className = cardClass;
+    card.innerHTML = `
+      <div class="card-img-container" style="position:relative;">
+        <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="fallback-icon fish-fallback">🐟</div>
+        <img src="images/${badgeImg}" style="position:absolute; top:6px; right:6px; width:30px; height:34px; object-fit:contain; z-index:2; filter:drop-shadow(0 2px 5px rgba(0,0,0,0.85));" title="${badgeLabel}" />
+      </div>
+      <div class="item-info">
+        <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
+        <p>Poids: ${fish.weight.toFixed(3)} kg</p>
+        <p style="color:var(--accent); font-weight:600; margin-top:3px;">
+          Valeur: ${fish.silver_value.toFixed(2)} Silver
+        </p>
+      </div>
+    `;
+    bourricheGrid.appendChild(card);
+  });
+}
+
+// SELL FISH MARKET action
+async function sellBourriche() {
+  try {
+    const res = await fetch(`${API_URL}/api/fish/sell`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const added = data.silverAdded !== undefined ? data.silverAdded : (data.silverEarned || 0);
+      showToast(`Poissons vendus ! +${Number(added).toFixed(2)} Silver gagnés ! 💰`, 'success');
+      await refreshState();
+      renderBourriche();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast("Vente impossible.", 'danger');
+  }
+}
+
+// QUESTS (Défis) RENDERING
+function renderQuests() {
+  questsList.innerHTML = '';
+  if (!userState || !userState.quests) return;
+
+  userState.quests.forEach(q => {
+    const card = document.createElement('div');
+    card.className = 'helper-card';
+
+    const pct = Math.min(100, Math.floor((q.progress / q.target) * 100));
+    
+    // Render claim button or success label
+    let statusAction = '';
+    if (q.claimed) {
+      statusAction = '<span style="color:var(--text-muted); font-size:0.75rem; font-weight:600;">RÉCLAMÉ</span>';
+    } else if (q.progress >= q.target) {
+      statusAction = `<button class="btn btn-primary btn-sm" style="background-color:var(--accent); color:#000;" onclick="claimQuest('${q.id}')">Réclamer</button>`;
+    } else {
+      statusAction = `<span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--text-muted);">${q.progress}/${q.target}</span>`;
+    }
+
+    card.innerHTML = `
+      <div class="helper-info" style="width: 70%;">
+        <h4>${q.title}</h4>
+        <span style="font-size:0.75rem; line-height:1.2; display:block; margin:2px 0;">${q.desc}</span>
+        <span style="color:var(--accent); font-size:0.75rem; font-weight:600;">Récompense: ${q.rewardDesc}</span>
+        
+        <!-- Quest progress indicator line -->
+        <div style="background-color:rgba(0,0,0,0.4); height:4px; border-radius:2px; overflow:hidden; margin-top:6px; width:100%;">
+          <div style="background-color:var(--primary); height:100%; width:${pct}%;"></div>
+        </div>
+      </div>
+      <div class="quest-action-status">${statusAction}</div>
+    `;
+    questsList.appendChild(card);
+  });
+}
+
+async function claimQuest(questId) {
+  try {
+    const res = await fetch(`${API_URL}/api/quests/claim`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ questId })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Défi complété ! Récompense obtenue: ${data.rewardMsg} 🎁`, 'success');
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast("Récompense indisponible.", 'danger');
+  }
+}
+window.claimQuest = claimQuest;
+
+// INVENTAIRE MATERIEL
+function renderInventory() {
+  const grid = document.getElementById('inventory-grid');
+  grid.innerHTML = '';
+  if (!userState) return;
+
+  // Only show equipable gear: Rods, Reels, Lines, Baits
+  const gearItems = userState.inventory.filter(i => ['rod', 'reel', 'line', 'bait'].includes(i.item_type));
+
+  if (gearItems.length === 0) {
+    grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; grid-column:1/-1;">Sac vide.</p>';
+    return;
+  }
+
+  gearItems.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+
+    const isEquipped = 
+      (item.item_type === 'rod' && userState.user.current_rod === item.item_name) ||
+      (item.item_type === 'reel' && userState.user.current_reel === item.item_name) ||
+      (item.item_type === 'line' && userState.user.current_line === item.item_name) ||
+      (item.item_type === 'bait' && userState.user.current_bait === item.item_name);
+
+    let details = '';
+    let itemConfig = null;
+    if (metadata) {
+      if (item.item_type === 'rod') itemConfig = metadata.rods[item.item_name];
+      else if (item.item_type === 'reel') itemConfig = metadata.reels[item.item_name];
+      else if (item.item_type === 'line') itemConfig = metadata.lines[item.item_name];
+      else if (item.item_type === 'bait') itemConfig = metadata.baits[item.item_name];
+    }
+
+    if (itemConfig) {
+      if (item.item_type === 'rod') details = `Force Clic: +${itemConfig.addPower}`;
+      else if (item.item_type === 'reel') details = `Multiplier: x${itemConfig.multiplier}`;
+      else if (item.item_type === 'line') details = `Résistance: ${itemConfig.strength}kg | Longueur: ${itemConfig.lengthM || 150}m`;
+      else if (item.item_type === 'bait') details = `Attraction: +${itemConfig.addPower}`;
+    }
+
+    const slug = getImageSlug(item.item_name);
+    const escapedName = item.item_name.replace(/'/g, "\\'");
+
+    card.innerHTML = `
+      <div class="card-img-container">
+        <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="fallback-icon gear-fallback">🎣</div>
+      </div>
+      <div class="item-info">
+        <h4>${item.item_name}</h4>
+        <span class="item-badge">${translateType(item.item_type)}</span>
+        <p style="margin-top: 4px;">${details}</p>
+      </div>
+      <div class="item-card-footer">
+        ${isEquipped ? '<span style="color:var(--success); font-weight:600; font-size:0.8rem;">ÉQUIPÉ</span>' : `<button class="btn btn-primary btn-sm" onclick="equipItem('${item.item_type}', '${escapedName}')">Équiper</button>`}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function translateType(type) {
+  switch(type) {
+    case 'rod': return 'Canne';
+    case 'reel': return 'Moulinet';
+    case 'line': return 'Fil';
+    case 'bait': return 'Appât';
+    default: return type;
+  }
+}
+
+async function equipItem(type, name) {
+  try {
+    const res = await fetch(`${API_URL}/api/equip`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type, name })
+    });
+    if (res.ok) {
+      showToast('Équipement équipé', 'success');
+      await refreshState();
+    } else {
+      const data = await res.json();
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur équipement', 'danger');
+  }
+}
+window.equipItem = equipItem;
+
+// OWNED PASSIVE HELPERS
+function renderOwnedHelpers() {
+  ownedHelpersList.innerHTML = '';
+  if (!userState) return;
+
+  const helpers = userState.inventory.filter(i => i.item_type === 'auto_fisher' || i.item_type === 'auto_clicker');
+
+  if (helpers.length === 0) {
+    ownedHelpersList.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 10px;">Aucune amélioration active.</p>';
+    return;
+  }
+
+  helpers.forEach(item => {
+    const config = metadata.autoFishers[item.item_name] || metadata.autoClickers[item.item_name];
+    if (!config) return;
+    const totalSPS = item.quantity * config.sps * userState.stats.lakeMult;
+    
+    const card = document.createElement('div');
+    card.className = 'helper-card';
+    card.innerHTML = `
+      <div class="helper-info">
+        <h4>${item.item_name}</h4>
+        <span>Production: +${totalSPS.toFixed(1)} Silver/s</span>
+      </div>
+      <div class="helper-count">x${item.quantity}</div>
+    `;
+    ownedHelpersList.appendChild(card);
+  });
+}
+
+// BOUTIQUE
+const shopTabs = document.querySelectorAll('.shop-tab-btn');
+shopTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    shopTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderShop(tab.getAttribute('data-shop'));
+  });
+});
+
+let currentSubFilter = 'all';
+
+function renderShop(category, subFilter = 'all') {
+  const grid = document.getElementById('shop-grid');
+  const subFilterContainer = document.getElementById('shop-subfilter-tabs');
+  grid.innerHTML = '';
+  if (!metadata || !userState) return;
+
+  // Manage subfilters visibility
+  if (['rods', 'reels', 'lines', 'leurres'].includes(category)) {
+    subFilterContainer.style.display = 'flex';
+    subFilterContainer.innerHTML = '';
+    
+    let subTypes = [];
+    if (category === 'rods' || category === 'reels') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'fond', label: 'Pêche au fond' },
+        { id: 'spinning', label: 'Spinning' },
+        { id: 'mer', label: 'Pêche en Mer' }
+      ];
+    } else if (category === 'lines') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'fond', label: 'Fils de Fond' },
+        { id: 'leurre', label: 'Fils de Leurres' },
+        { id: 'mer', label: 'Fils de Mer' }
+      ];
+    } else if (category === 'leurres') {
+      subTypes = [
+        { id: 'all', label: 'Tous' },
+        { id: 'dure', label: 'Leurres durs' },
+        { id: 'surface', label: 'Surface' },
+        { id: 'souple', label: 'Leurres souples' },
+        { id: 'cuillere', label: 'Cuillères' },
+        { id: 'mer', label: 'Leurres de Mer' }
+      ];
+    }
+  if (['rods', 'reels', 'lines', 'leurres', 'auto'].includes(category)) {
+    subfilterDiv.style.display = 'flex';
+    subfilterDiv.innerHTML = '';
+    
+    if (category === 'auto') {
+      subfilterDiv.innerHTML = `
+      <button class="filter-btn ${subFilter === 'all' ? 'active' : ''}" onclick="renderShop('auto', 'all')">Tout</button>
+      <button class="filter-btn ${subFilter === 'auto' ? 'active' : ''}" onclick="renderShop('auto', 'auto')">SPS / Clics</button>
+      <button class="filter-btn ${subFilter === 'crit' ? 'active' : ''}" onclick="renderShop('auto', 'crit')">Critiques</button>
+      <button class="filter-btn ${subFilter === 'weight' ? 'active' : ''}" onclick="renderShop('auto', 'weight')">Poids</button>
+      <button class="filter-btn ${subFilter === 'xp' ? 'active' : ''}" onclick="renderShop('auto', 'xp')">XP</button>
+      `;
+    } else {
+      let subTypes = [];
+      if (category === 'rods' || category === 'reels') {
+        subTypes = [{ id: 'all', label: 'Tous' }, { id: 'fond', label: 'Pêche au fond' }, { id: 'spinning', label: 'Spinning' }, { id: 'mer', label: 'Pêche en Mer' }];
+      } else if (category === 'lines') {
+        subTypes = [{ id: 'all', label: 'Tous' }, { id: 'fond', label: 'Fils de Fond' }, { id: 'leurre', label: 'Fils de Leurres' }, { id: 'mer', label: 'Fils de Mer' }];
+      } else if (category === 'leurres') {
+        subTypes = [{ id: 'all', label: 'Tous' }, { id: 'dure', label: 'Leurres durs' }, { id: 'surface', label: 'Surface' }, { id: 'souple', label: 'Leurres souples' }, { id: 'cuillere', label: 'Cuillères' }, { id: 'mer', label: 'Leurres de Mer' }];
+      }
+      subTypes.forEach(st => {
+        const btn = document.createElement('button');
+        btn.className = `filter-btn ${subFilter === st.id ? 'active' : ''}`;
+        btn.innerText = st.label;
+        btn.onclick = () => renderShop(category, st.id);
+        subfilterDiv.appendChild(btn);
+      });
+    }
+  } else {
+    subfilterDiv.style.display = 'none';
+  }
+
+  if (category === 'auto') {
+    // 1. Render Auto-fishers / Clickers (SPS / Clics)
+    if (subFilter === 'all' || subFilter === 'auto') {
+      const items = { ...metadata.autoFishers, ...metadata.autoClickers };
+      Object.keys(items).forEach(name => {
+        const config = items[name];
+        const inventoryItem = userState.inventory.find(i => i.item_name === name);
+        const ownedCount = inventoryItem ? inventoryItem.quantity : 0;
+        const currentCost = Math.floor(config.baseCost * Math.pow(1.15, ownedCount));
+        const userLevel = userState.user.level;
+        const isLocked = config.levelRequired && userLevel < config.levelRequired;
+        const maxQty = userState.user.has_ameliorateur ? 7 : 5;
+        const isMaxed = ownedCount >= maxQty;
+
+        const card = document.createElement('div');
+        card.className = `item-card ${isLocked ? 'locked-item' : ''} ${isMaxed ? 'owned-item' : ''}`;
+        const slug = getImageSlug(name);
+        card.innerHTML = `
+          <div class="card-img-container">
+            <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <div class="fallback-icon gear-fallback">⚙️</div>
+            ${isLocked ? '<div class="lock-overlay">🔒</div>' : ''}
+          </div>
+          <div class="item-info">
+            <h4>${name}</h4>
+            <p>${config.desc}</p>
+            <p style="margin-top: 4px; color: var(--primary);">${config.sps ? 'Prod: +' + config.sps + ' Silver/s' : 'Clic: +' + config.spc}</p>
+            <span class="item-badge">Possédé: ${ownedCount} / ${maxQty}</span>
+            ${isLocked ? `<p style="color:var(--danger); font-size:0.75rem; font-weight:600; margin-top:4px;">🔒 Déblocage : Niveau ${config.levelRequired}</p>` : ''}
+          </div>
+          <div class="item-card-footer">
+            <span class="item-price">${currentCost} 🪙</span>
+            ${isMaxed ? 
+              `<button class="btn btn-sm" disabled style="background:var(--success); color:#fff; cursor:not-allowed;">Max</button>` :
+              (isLocked ?
+                `<button class="btn btn-sm" disabled style="background:rgba(255,255,255,0.03); color:var(--text-muted); cursor:not-allowed;">Niv ${config.levelRequired}</button>` :
+                `<button class="btn btn-primary btn-sm" onclick="buyAutoHelper('${name.replace(/'/g, "\\'")}', '${metadata.autoClickers[name] ? 'auto_clicker' : 'auto_fisher'}')">Acheter</button>`
+              )
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // 2. Render Passive Skills
+    if (subFilter === 'all' || subFilter === 'crit' || subFilter === 'weight' || subFilter === 'xp') {
+      const passiveItems = metadata.passiveSkills || {};
+      Object.keys(passiveItems).forEach(name => {
+        const data = passiveItems[name];
+        if (subFilter !== 'all' && data.type !== subFilter) return;
+
+        const userLevel = userState.user.level;
+        const isLocked = data.levelRequired && userLevel < data.levelRequired;
+        const alreadyOwned = userState.inventory.some(i => i.item_name === name);
+
+        const card = document.createElement('div');
+        card.className = `item-card ${isLocked ? 'locked-item' : ''} ${alreadyOwned ? 'owned-item' : ''}`;
+
+        card.innerHTML = `
+          <div class="card-img-container" style="background: rgba(229,169,59,0.1); border-bottom: 1px solid rgba(229,169,59,0.3);">
+            <div class="fallback-icon" style="display:flex; font-size:2.5rem;">⭐</div>
+            ${isLocked ? '<div class="lock-overlay">🔒</div>' : ''}
+          </div>
+          <div class="item-info">
+            <h4 style="color:var(--accent);">${name}</h4>
+            <p>${data.desc}</p>
+            ${isLocked ? `<p style="color:var(--danger); font-size:0.75rem; font-weight:600; margin-top:4px;">🔒 Déblocage : Niveau ${data.levelRequired}</p>` : ''}
+          </div>
+          <div class="item-card-footer">
+            <span class="item-price">${data.baseCost} 🪙</span>
+            ${alreadyOwned ? 
+              `<button class="btn btn-sm" disabled style="background:var(--success); color:#fff; cursor:not-allowed;">Acquis</button>` :
+              (isLocked ? 
+                `<button class="btn btn-sm" disabled style="background:rgba(255,255,255,0.03); color:var(--text-muted); cursor:not-allowed;">Niv ${data.levelRequired}</button>` : 
+                `<button class="btn btn-primary btn-sm" onclick="buyPassiveItem('${name.replace(/'/g, "\\'")}')">Acheter</button>`
+              )
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+  } else if (category === 'coffee') {
+    // Render Coffee items
+    const coffeeItems = [
+      { id: 'cup', name: '☕ Tasse de Café', desc: 'Restaure +30% d\'énergie immédiatement.', price: 15, icon: '☕' },
+      { id: 'thermos', name: '🧴 Thermos de Café', desc: 'Restaure +100% d\'énergie immédiatement (énergie max).', price: 45, icon: '🧴' }
+    ];
+    coffeeItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `
+        <div class="card-img-container">
+          <div class="fallback-icon" style="display:flex; font-size:2.5rem;">${item.icon}</div>
+        </div>
+        <div class="item-info">
+          <h4>${item.name}</h4>
+          <p>${item.desc}</p>
+        </div>
+        <div class="item-card-footer">
+          <span class="item-price">${item.price} 🪙</span>
+          <button class="btn btn-primary btn-sm" onclick="buyCoffee('${item.id}')">Acheter</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  } else if (category === 'p2w') {
+    // Boutique Premium Pay-to-Win
+    const packs = [
+      { id: 'silver', name: '💰 Le Pack Argent', desc: '+1000 Silver instantanément (utilisable plusieurs fois)', price: '4.99€', icon: '💰' },
+      { id: 'voyageur', name: '🗺️ Le Voyageur', desc: 'Permet de voyager sur n\'importe quelle map sans restriction de niveau et gratuitement', price: '4.99€', icon: '🌍' },
+      { id: 'ameliorateur', name: '📈 L\'Améliorateur', desc: 'Augmente la limite d\'achat des améliorations/cliqueurs de 5 à 7', price: '7.99€', icon: '📈' },
+      { id: 'offline', name: '🛌 L\'Offline', desc: 'Active les gains hors-ligne (50% de production sur 1h max)', price: '9.99€', icon: '🛌' }
+    ];
+    packs.forEach(pack => {
+      const card = document.createElement('div');
+      card.className = 'item-card p2w-card';
+      card.innerHTML = `
+        <div class="card-img-container">
+          <div class="fallback-icon" style="display:flex; font-size:2.5rem;">${pack.icon}</div>
+        </div>
+        <div class="item-info">
+          <h4 style="color:var(--accent);">${pack.name}</h4>
+          <p>${pack.desc}</p>
+        </div>
+        <div class="item-card-footer">
+          <span class="item-price" style="color:#e5a93b; font-size:1rem;">${pack.price}</span>
+          <button class="btn btn-sm" style="background:linear-gradient(135deg,#e5a93b,#f1c40f);color:#000;font-weight:800;" onclick="buyP2W('${pack.id}')">ACHETER</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  } else {
+    let items = {};
+    let itemType = '';
+    let isBaitCategory = false;
+
+    if (category === 'rods') { items = metadata.rods; itemType = 'rod'; }
+    else if (category === 'reels') { items = metadata.reels; itemType = 'reel'; }
+    else if (category === 'lines') { items = metadata.lines; itemType = 'line'; }
+    else if (['vers', 'vifs', 'artificiel', 'leurres'].includes(category)) { 
+      items = metadata.baits; 
+      itemType = 'bait'; 
+      isBaitCategory = true; 
+    }
+
+    Object.keys(items).forEach(name => {
+      const data = items[name];
+      if (data.cost === 0) return;
+      if (isBaitCategory && data.category !== category) return;
+
+      // Filter by subType if specified
+      if (subFilter !== 'all' && data.subType && data.subType !== subFilter) return;
+
+      const userLevel = userState.user.level;
+      const isLocked = data.levelRequired && userLevel < data.levelRequired;
+
+      const card = document.createElement('div');
+      card.className = `item-card ${isLocked ? 'locked-item' : ''}`;
+
+      let spec = '';
+      if (itemType === 'rod') spec = `Force Clic: +${data.addPower}`;
+      else if (itemType === 'reel') spec = `Multiplier: x${data.multiplier}`;
+      else if (itemType === 'line') spec = `Résistance: ${data.strength}kg | Longueur: ${data.lengthM || 150}m | Crit: +${Math.round(data.critChance * 100)}%`;
+      else if (itemType === 'bait') spec = `Attraction: +${data.addPower}`;
+
+      const slug = getImageSlug(name);
+
+      card.innerHTML = `
+        <div class="card-img-container">
+          <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+          <div class="fallback-icon gear-fallback">🎣</div>
+          ${isLocked ? '<div class="lock-overlay">🔒</div>' : ''}
+        </div>
+        <div class="item-info">
+          <h4>${name}</h4>
+          <p>${spec}</p>
+          <p style="font-size:0.75rem; color:var(--text-muted); font-weight:600; margin-top:2px;">⭐ Niveau requis : ${data.levelRequired || 1}</p>
+          ${isLocked ? `<p style="color:var(--danger); font-size:0.75rem; font-weight:700; margin-top:4px;">🔒 Map : ${data.mapName}</p>` : ''}
+        </div>
+        <div class="item-card-footer">
+          <span class="item-price">${data.cost.toFixed(2)} 🪙</span>
+          ${isLocked ? 
+            `<button class="btn btn-sm" disabled style="background:rgba(255,255,255,0.03); color:var(--text-muted); cursor:not-allowed;">Bloqué</button>` : 
+            `<button class="btn btn-primary btn-sm" onclick="buyGearItem('${itemType}', '${name}')">Acheter</button>`
+          }
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+}
+
+async function buyCoffee(type) {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/coffee`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message, 'success');
+      currentSilver = data.newSilver;
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur lors de l\'achat de café', 'danger');
+  }
+}
+window.buyCoffee = buyCoffee;
+
+async function buyAutoHelper(name, type) {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/buy_auto`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name, type })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Achat réussi !', 'success');
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur d\'achat', 'danger');
+  }
+}
+window.buyAutoHelper = buyAutoHelper;
+
+async function buyPassiveItem(name) {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/buy_passive`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Compétence ${name} acquise !`, 'success');
+      currentSilver = data.newSilver;
+      await refreshState();
+      renderShopGrid(document.querySelector('.shop-tab-btn.active').dataset.shop);
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur d\'achat', 'danger');
+  }
+}
+
+async function buyGearItem(type, name) {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/buy`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type, name })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Matériel acheté avec succès !', 'success');
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur d\'achat', 'danger');
+  }
+}
+window.buyGearItem = buyGearItem;
+
+// VOYAGES
+function renderTravel() {
+  const grid = document.getElementById('travel-grid');
+  grid.innerHTML = '';
+  if (!metadata || !userState) return;
+
+  const maps = Object.keys(metadata.waterBodies).map(key => {
+    return { name: key, ...metadata.waterBodies[key] };
+  }).sort((a, b) => a.levelRequired - b.levelRequired);
+
+  maps.forEach(wb => {
+    const isCurrent = userState.user.current_water_body === wb.name;
+    const hasVoyageur = userState.user.has_voyageur;
+    const isLocked = userState.user.level < wb.levelRequired;
+    const cost = hasVoyageur ? 0 : wb.travelCost;
+    const bgImg = WATER_BODIES_BG[wb.name] || 'map_moustique.jpg';
+    
+    const card = document.createElement('div');
+    card.className = `item-card map-card ${isLocked ? 'map-locked' : ''}`;
+    card.style.backgroundImage = `url("${encodeURI('./images/' + bgImg)}")`;
+    card.style.position = 'relative';
+    card.style.backgroundSize = 'cover';
+    card.style.backgroundPosition = 'center';
+    card.style.color = '#fff';
+    card.style.textShadow = '0 1px 3px rgba(0,0,0,0.8)';
+    
+    // Gradient overlay for better text readability
+    card.innerHTML = `
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 100%);z-index:1;border-radius:inherit;"></div>
+      ${isLocked ? '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3rem;z-index:3;">🔒</div>' : ''}
+      <div class="map-card-content" style="position:relative;z-index:2;display:flex;flex-direction:column;height:100%;justify-content:space-between;">
+        <div class="item-info">
+          <h4 style="font-size:1.2rem;margin-bottom:5px;">${wb.name}</h4>
+          <p>Niveau requis: ${hasVoyageur ? `<span style="text-decoration:line-through;">${wb.levelRequired}</span> (Voyageur)` : wb.levelRequired}</p>
+        </div>
+        <div class="item-card-footer" style="margin-top:20px;">
+          <span class="item-price" style="font-size:1.1rem;">${cost > 0 ? `${cost} 🪙` : '<span style="color:var(--success);">Gratuit</span>'}</span>
+          ${isCurrent 
+            ? '<span style="color:var(--success); font-weight:800; font-size:0.95rem; background:rgba(0,0,0,0.5); padding:5px; border-radius:4px;">SUR PLACE</span>' 
+            : `<button class="btn btn-primary btn-sm" ${isLocked ? 'disabled' : ''} onclick="travelTo('${wb.name}')">${isLocked ? 'Verrouillé' : 'Voyager'}</button>`
+          }
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+async function travelTo(name) {
+  try {
+    const res = await fetch(`${API_URL}/api/travel`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Voyage vers ${name} réussi ! 📍`, 'success');
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur voyage', 'danger');
+  }
+}
+window.travelTo = travelTo;
+
+// CLASSEMENT
+async function loadLeaderboard() {
+  try {
+    const res = await fetch(`${API_URL}/api/leaderboard`);
+    const list = await res.json();
+    const tbody = document.getElementById('leaderboard-body');
+    tbody.innerHTML = '';
+
+    list.forEach((u, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>#${index + 1}</td>
+        <td><strong>${u.username}</strong></td>
+        <td>${u.level}</td>
+        <td>${u.silver.toFixed(2)} 🪙</td>
+        <td>${u.total_helpers} 🎣</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error('Leaderboard load error:', err);
+  }
+}
+
+offlineCloseBtn.addEventListener('click', () => {
+  offlineSplash.classList.remove('active');
+});
+
+// P2W PURCHASE HANDLER
+async function buyP2W(packId) {
+  if (!confirm('⚠️ Voulez-vous vraiment acheter ce pack Premium ?')) return;
+  try {
+    const res = await fetch(`${API_URL}/api/shop/p2w`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ pack: packId })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`🔥 ${data.message}`, 'success');
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur d\'achat Premium', 'danger');
+  }
+}
+window.buyP2W = buyP2W;
+
+function renderAccount() {
+  if (!userState) return;
+  const u = userState.user;
+  const el = (id) => document.getElementById(id);
+  
+  if (el('account-username-lbl')) el('account-username-lbl').innerText = u.username;
+}
+
+function renderStats() {
+  if (!userState) return;
+  const u = userState.user;
+  const el = (id) => document.getElementById(id);
+  
+  if (el('stat-level')) el('stat-level').innerText = u.level;
+  if (el('stat-xp')) el('stat-xp').innerText = `${u.xp} XP`;
+  if (el('stat-catches')) el('stat-catches').innerText = u.total_catches;
+  if (el('stat-capital')) el('stat-capital').innerText = `${(u.total_capital || 0).toFixed(2)} Silver`;
+  if (el('stat-spent')) el('stat-spent').innerText = `${(u.total_silver_spent || 0).toFixed(2)} Silver`;
+  
+  if (el('stat-time')) {
+    const totalSeconds = u.total_time_played || 0;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    if (hours > 0) {
+      el('stat-time').innerText = `${hours}h ${minutes}m`;
+    } else {
+      el('stat-time').innerText = `${minutes} min`;
+    }
+  }
+  
+  if (el('stat-clicks')) el('stat-clicks').innerText = u.total_clicks || 0;
+}
+
+let lastCatchTime = Date.now();
+
+setInterval(async () => {
+  if (token) {
+    // Anti-AFK Check (10 minutes without catching a fish)
+    if (Date.now() - lastCatchTime > 10 * 60 * 1000) {
+      alert("Déconnexion pour inactivité (10 min sans valider de prise).");
+      logout();
+      return;
+    }
+
+    try {
+      await fetch(`${API_URL}/api/user/ping`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+      
+      // Update local state and UI
+      if (userState && userState.user) {
+        userState.user.total_time_played = (userState.user.total_time_played || 0) + 60;
+        populateDashboard();
+      }
+    } catch (e) { console.error("Ping failed"); }
+  }
+}, 60000);
+
+let selectedPrisesMapFilter = 'all';
+
+function renderPrises() {
+  const grid = document.getElementById('prises-grid');
+  grid.innerHTML = '';
+  const allFishList = (userState && userState.records) ? userState.records : ((userState && userState.vivier) ? userState.vivier : []);
+  
+  // Filter ONLY Trophée and Trophée Bleu fish
+  const trophyFishList = allFishList.filter(f => f.fish_name.includes('(Trophée') || f.fish_name.includes('Trophée Bleu'));
+
+  // Group by fish_name to find the max weight per trophy type
+  const recordsObj = {};
+  trophyFishList.forEach(f => {
+    // If map filter is active, filter by species map
+    if (selectedPrisesMapFilter !== 'all') {
+      const baseName = getBaseFishName(f.fish_name);
+      let fishMap = '';
+      if (metadata && metadata.fishDatabase) {
+        for (const [mapName, speciesArray] of Object.entries(metadata.fishDatabase)) {
+          if (speciesArray.some(s => s.name === baseName)) {
+            fishMap = mapName;
+            break;
+          }
+        }
+      }
+      if (fishMap !== selectedPrisesMapFilter) return;
+    }
+
+    if (!recordsObj[f.fish_name] || f.weight > recordsObj[f.fish_name].weight) {
+      recordsObj[f.fish_name] = f;
+    }
+  });
+
+  const uniqueRecords = Object.values(recordsObj).sort((a, b) => b.weight - a.weight);
+
+  if (uniqueRecords.length === 0) {
+    grid.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 20px; grid-column:1/-1;">Aucun trophée enregistré ${selectedPrisesMapFilter !== 'all' ? 'sur ' + selectedPrisesMapFilter : ''}. Allez pêcher ! 🏆</p>`;
+    return;
+  }
+
+  uniqueRecords.forEach(fish => {
+    const card = document.createElement('div');
+    let cardClass = 'item-card fish-card';
+    let labelClass = 'rarity-tague';
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+
+    const fullName = fish.fish_name || '';
+    if (fullName.includes('Trophée Bleu')) { 
+      cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
+    } else if (fullName.includes('Trophée')) { 
+      cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
+    } else if (fullName.includes('Espèce Rare') || fullName.includes('Rare')) {
+      badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    } else {
+      badgeImg = 'badge_normal.png'; badgeLabel = fullName.includes('Non-Tagué') ? 'Non-Tagué' : 'Tagué';
+    }
+    
+    const baseName = getBaseFishName(fish.fish_name);
+    const slug = getImageSlug(baseName);
+
+    card.className = cardClass;
+    card.innerHTML = `
+      <div class="card-img-container" style="position:relative;">
+        <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="fallback-icon fish-fallback">🏆</div>
+        <img src="images/${badgeImg}" style="position:absolute; top:6px; right:6px; width:30px; height:34px; object-fit:contain; z-index:2; filter:drop-shadow(0 2px 5px rgba(0,0,0,0.85));" title="${badgeLabel}" />
+      </div>
+      <div class="item-info">
+        <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
+        <p>Record Poids: <strong>${fish.weight.toFixed(3)} kg</strong></p>
+        <p>Taille: ${Math.floor(Math.pow(fish.weight, 1/3) * 35)} cm</p>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Add map filter tab button event listeners for Mes Prises
+document.addEventListener('DOMContentLoaded', () => {
+  const filterBtns = document.querySelectorAll('#prises-map-filter .shop-tab-btn');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedPrisesMapFilter = btn.getAttribute('data-map-filter');
+      renderPrises();
+    });
+  });
+});
+
+function renderMapInfo() {
+  const container = document.getElementById('map-info-container');
+  container.innerHTML = '';
+  if (!userState || !metadata) return;
+
+  const currentMap = userState.user.current_water_body;
+  const wb = metadata.waterBodies[currentMap];
+  if (!wb) return;
+
+  const bgImg = WATER_BODIES_BG[currentMap] || 'map_moustique.jpg';
+  
+  let html = `
+    <div style="background-image: url('${encodeURI('./images/' + bgImg)}'); background-size: cover; background-position: center; border-radius: 12px; padding: 20px; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+      <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); border-radius: 12px;"></div>
+      <div style="position: relative; z-index: 1;">
+        <h3 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 10px;">${currentMap}</h3>
+        <p style="margin-bottom: 10px;"><strong>Niveau Requis :</strong> ${wb.levelRequired}</p>
+        <p style="margin-bottom: 10px;"><strong>Coût de voyage :</strong> ${wb.travelCost > 0 ? wb.travelCost + ' Silver' : 'Gratuit'}</p>
+        <p style="margin-bottom: 10px;"><strong>Techniques Autorisées :</strong> ${wb.styles.map(s => translateStyle(s)).join(', ')}</p>
+      </div>
+    </div>
+    <h3>Poissons de la Map</h3>
+    <table class="leaderboard-table" style="margin-top: 15px;">
+      <thead>
+        <tr>
+          <th>Espèce</th>
+          <th>Poids Min</th>
+          <th>Poids Max</th>
+          <th>Taux de drop</th>
+          <th>Valeur (par kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  if (metadata.fishDatabase[currentMap]) {
+    metadata.fishDatabase[currentMap].forEach(f => {
+      html += `
+        <tr>
+          <td><strong>${f.name}</strong></td>
+          <td>${f.minW} kg</td>
+          <td>${f.maxW} kg</td>
+          <td>${(f.rate * 100).toFixed(1)}%</td>
+          <td style="color:var(--accent);">${f.valuePerKg} S</td>
+        </tr>
+      `;
+    });
+  }
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+let selectedMapChallengeFilter = 'Lac aux moustique';
+
+function renderMapChallenges() {
+  const container = document.getElementById('map-challenges-container');
+  if (!container || !userState || !metadata) return;
+  container.innerHTML = '';
+
+  const fishList = metadata.fishDatabase[selectedMapChallengeFilter] || [];
+  const records = userState.records || [];
+
+  // Check completions for 3 steps
+  // Step 1: All species caught at least once
+  // Step 2: All species caught in Trophy
+  // Step 3: All species caught in Blue Trophy
+  let step1Caught = 0;
+  let step2Trophy = 0;
+  let step3Blue = 0;
+
+  fishList.forEach(fish => {
+    const catchedNormal = records.find(r => r.fish_name.includes(fish.name));
+    const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
+    const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
+
+    if (catchedNormal) step1Caught++;
+    if (catchedTrophy || catchedBlueTrophy) step2Trophy++;
+    if (catchedBlueTrophy) step3Blue++;
+  });
+
+  const totalSpecies = fishList.length;
+
+  // Scale rewards dynamically per map difficulty
+  let rMult = 1.0;
+  if (selectedMapChallengeFilter === 'Rivière Belaya') rMult = 2.5;
+  else if (selectedMapChallengeFilter === 'Lac cuivré') rMult = 6.0;
+  else if (selectedMapChallengeFilter === 'Mer de Norvège') rMult = 15.0;
+
+  const reward1 = Math.floor(500 * rMult).toLocaleString('fr-FR');
+  const reward2 = Math.floor(2500 * rMult).toLocaleString('fr-FR');
+  const reward3 = Math.floor(10000 * rMult).toLocaleString('fr-FR');
+
+  const steps = [
+    { num: 1, title: '🟢 Étape 1 : Maître du Lieu', desc: 'Attraper toutes les espèces de la map au moins une fois.', done: step1Caught, total: totalSpecies, reward: `+${reward1} Silver & Titre Exclusif` },
+    { num: 2, title: '🟡 Étape 2 : Chasseur de Trophées', desc: 'Attraper toutes les espèces de la map en version Trophée.', done: step2Trophy, total: totalSpecies, reward: `+${reward2} Silver & Badge Rare` },
+    { num: 3, title: '🔵 Étape 3 : Légende Vivante (Trophée Bleu)', desc: 'Attraper toutes les espèces de la map en version Trophée Bleu.', done: step3Blue, total: totalSpecies, reward: `+${reward3} Silver & Trophée d'Or` }
+  ];
+
+  steps.forEach(st => {
+    const isCompleted = st.done >= st.total && st.total > 0;
+    const pct = st.total > 0 ? Math.min(100, Math.floor((st.done / st.total) * 100)) : 0;
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.style.cssText = `border: 1px solid ${isCompleted ? 'var(--success)' : 'rgba(255,255,255,0.15)'}; background: ${isCompleted ? 'rgba(39, 174, 96, 0.15)' : 'rgba(20,25,30,0.8)'}; padding: 14px;`;
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="font-size:1.05rem; margin:0; color:${isCompleted ? 'var(--success)' : '#fff'};">${st.title}</h4>
+        <span style="font-weight:800; font-size:0.85rem; color:${isCompleted ? 'var(--success)' : 'var(--text-muted)'};">${isCompleted ? '✅ ACCOMPLI' : st.done + ' / ' + st.total}</span>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0;">${st.desc}</p>
+      <div style="background-color:rgba(0,0,0,0.5); height:6px; border-radius:3px; overflow:hidden; margin:8px 0;">
+        <div style="background:${isCompleted ? 'var(--success)' : 'var(--primary)'}; height:100%; width:${pct}%;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+        <span style="font-size:0.75rem; color:var(--accent); font-weight:700;">Récompense: ${st.reward}</span>
+        ${isCompleted ? '<span style="font-size:0.75rem; color:var(--success); font-weight:800;">🎉 Débloqué</span>' : '<span style="font-size:0.75rem; color:var(--text-muted);">En cours...</span>'}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const challengeBtns = document.querySelectorAll('#map-challenges-filter .shop-tab-btn');
+  challengeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      challengeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMapChallengeFilter = btn.getAttribute('data-map-challenge-filter');
+      renderMapChallenges();
+    });
+  });
+});
+
+function renderRepair() {
+  const grid = document.getElementById('repair-grid');
+  grid.innerHTML = '';
+  if (!userState || !metadata) return;
+
+  const u = userState.user;
+  const rod = metadata.rods[u.current_rod];
+  const reel = metadata.reels[u.current_reel];
+
+  if (rod) {
+    const durabilityNum = u.current_rod_durability !== undefined ? u.current_rod_durability : 100;
+    const missingPercent = (100 - durabilityNum) / 100.0;
+    const cost = Math.max(1, Math.floor(rod.cost * missingPercent * 1.5));
+    const durabilityStr = durabilityNum.toFixed(1);
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML = `
+      <div class="item-info">
+        <h4>${u.current_rod} (Canne)</h4>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${durabilityStr}%</span></p>
+      </div>
+      <div class="item-card-footer">
+        <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('rod', '${u.current_rod.replace(/'/g, "\\'")}')">Réparer</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+
+  if (reel) {
+    const durabilityNum = u.current_reel_durability !== undefined ? u.current_reel_durability : 100;
+    const missingPercent = (100 - durabilityNum) / 100.0;
+    const cost = Math.max(1, Math.floor(reel.cost * missingPercent * 1.5));
+    const durabilityStr = durabilityNum.toFixed(1);
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML = `
+      <div class="item-info">
+        <h4>${u.current_reel} (Moulinet)</h4>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'}; font-weight:700;">${durabilityStr}%</span></p>
+      </div>
+      <div class="item-card-footer">
+        <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('reel', '${u.current_reel.replace(/'/g, "\\'")}')">Réparer</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+
+  if (!rod && !reel) {
+    grid.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding: 15px; grid-column:1/-1;">Aucun équipement actuellement équipé à réparer.</p>';
+  }
+}
+
+let selectedCarnetMapFilter = 'Lac aux moustique';
+
+function renderCarnet() {
+  const grid = document.getElementById('carnet-grid');
+  if (!grid || !userState || !metadata) return;
+  grid.innerHTML = '';
+
+  const fishList = metadata.fishDatabase[selectedCarnetMapFilter] || [];
+  const records = userState.records || [];
+
+  fishList.forEach(fish => {
+    // Find highest trophy achieved
+    const catchedNormal = records.find(r => r.fish_name.includes(fish.name));
+    const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
+    const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
+
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+    let badgeColor = 'var(--success)';
+    let cardStyle = 'border: 1px solid rgba(255,255,255,0.1);';
+
+    if (catchedBlueTrophy) {
+      badgeImg = 'badge_blue_trophy.png';
+      badgeLabel = 'Trophée Bleu';
+      badgeColor = '#3498db';
+      cardStyle = 'border: 2px solid #3498db; background: rgba(52, 152, 219, 0.15);';
+    } else if (catchedTrophy) {
+      badgeImg = 'badge_trophy.png';
+      badgeLabel = 'Trophée';
+      badgeColor = '#f1c40f';
+      cardStyle = 'border: 2px solid #f1c40f; background: rgba(241, 196, 15, 0.15);';
+    } else if (catchedNormal) {
+      badgeImg = 'badge_normal.png';
+      badgeLabel = 'Tagué';
+      badgeColor = 'var(--success)';
+      cardStyle = 'border: 1px solid var(--success);';
+    } else {
+      cardStyle = 'filter: grayscale(80%); opacity: 0.5;';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.style.cssText = cardStyle;
+
+    const slug = getImageSlug(fish.name);
+    card.innerHTML = `
+      <div class="card-img-container" style="position:relative;">
+        <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="fallback-icon gear-fallback">🐟</div>
+        ${catchedNormal ? `<img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />` : ''}
+      </div>
+      <div class="item-info">
+        <h4>${fish.name}</h4>
+        <p style="color: ${badgeColor}; font-weight: 700; margin-top: 4px; display:flex; align-items:center; gap:4px;">
+          ${catchedNormal ? `<img src="images/${badgeImg}" style="width:14px; height:18px; object-fit:contain;" />` : ''} ${catchedNormal ? badgeLabel : '🔒 Non découvert'}
+        </p>
+        ${catchedNormal ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Max: ${(catchedBlueTrophy || catchedTrophy || catchedNormal).weight.toFixed(3)} kg</p>` : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const carnetBtns = document.querySelectorAll('#carnet-map-filter .shop-tab-btn');
+  carnetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      carnetBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedCarnetMapFilter = btn.getAttribute('data-carnet-filter');
+      renderCarnet();
+    });
+  });
+});
+
+async function repairGear(type, name) {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/repair`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type, name })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Réparation effectuée !', 'success');
+      await refreshState();
+      renderRepair();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur de réparation', 'danger');
+  }
+}
+
+init();
