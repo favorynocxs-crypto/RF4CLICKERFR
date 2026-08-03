@@ -62,7 +62,13 @@ async function getUserStats(userId, user) {
   const reel = user.current_reel;
   if (REELS[reel]) reelMult = 1.0 + ((REELS[reel].multiplier - 1.0) * reelEfficiency);
 
-  const baseSPC = flatSPC * reelMult;
+  let baseSPC = flatSPC * reelMult;
+
+  // Apply Fatigue penalty: -50% click power when energy < 30%
+  const energy = user.energy !== undefined ? user.energy : 100.0;
+  if (energy < 30.0) {
+    baseSPC *= 0.5;
+  }
 
   let critChance = 0.05;
   const line = user.current_line;
