@@ -41,15 +41,26 @@ function calculateLevel(xp) {
 async function getUserStats(userId, user) {
   let flatSPC = 1.0;
   
+  // Calculate durability penalty (0% durability = 0 power, <20% = 50% power)
+  const rodDurability = user.current_rod_durability !== undefined ? user.current_rod_durability : 100;
+  let rodEfficiency = 1.0;
+  if (rodDurability <= 0) rodEfficiency = 0.0;
+  else if (rodDurability < 20) rodEfficiency = 0.5;
+
+  const reelDurability = user.current_reel_durability !== undefined ? user.current_reel_durability : 100;
+  let reelEfficiency = 1.0;
+  if (reelDurability <= 0) reelEfficiency = 0.0;
+  else if (reelDurability < 20) reelEfficiency = 0.5;
+
   const rod = user.current_rod;
-  if (RODS[rod]) flatSPC += RODS[rod].addPower;
+  if (RODS[rod]) flatSPC += (RODS[rod].addPower * rodEfficiency);
 
   const bait = user.current_bait;
   if (BAITS[bait]) flatSPC += BAITS[bait].addPower;
 
   let reelMult = 1.0;
   const reel = user.current_reel;
-  if (REELS[reel]) reelMult = REELS[reel].multiplier;
+  if (REELS[reel]) reelMult = 1.0 + ((REELS[reel].multiplier - 1.0) * reelEfficiency);
 
   const baseSPC = flatSPC * reelMult;
 
