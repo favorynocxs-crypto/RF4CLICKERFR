@@ -62,12 +62,21 @@ router.get('/state', authenticate, async (req, res) => {
 
     const quests = await getQuestsStatus(req.user.id);
 
+    // Passive Energy Recovery (+1.0% per 2 seconds of inactivity/repos)
+    let currentEnergy = req.user.energy !== undefined ? req.user.energy : 100.0;
+    if (elapsedSeconds >= 2 && currentEnergy < 100.0) {
+      const recovered = (elapsedSeconds / 2.0) * 1.0;
+      currentEnergy = Math.min(100.0, Number((currentEnergy + recovered).toFixed(1)));
+      await db.query('UPDATE users SET energy = $1 WHERE id = $2', [currentEnergy, req.user.id]);
+    }
+
     res.json({
       user: {
         username: req.user.username,
         silver: req.user.silver,
         xp: req.user.xp,
         level: req.user.level,
+        energy: currentEnergy,
         current_water_body: req.user.current_water_body,
         current_rod: req.user.current_rod,
         current_reel: req.user.current_reel,
