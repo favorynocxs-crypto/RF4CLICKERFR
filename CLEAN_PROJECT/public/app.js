@@ -764,19 +764,26 @@ function renderBourriche() {
     
     let cardClass = 'item-card fish-card';
     let labelClass = 'rarity-tague';
-    if (fish.fish_name.includes('(Trophée Bleu)')) { cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; }
-    else if (fish.fish_name.includes('(Trophée)')) { cardClass += ' trophee'; labelClass = 'rarity-trophee'; }
-    else if (fish.fish_name.includes('(Non-Tagué)')) { cardClass += ' non-tague'; labelClass = 'rarity-non-tague'; }
-    else { cardClass += ' tague'; labelClass = 'rarity-tague'; }
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+
+    if (fish.fish_name.includes('(Trophée Bleu)')) { 
+      cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
+    } else if (fish.fish_name.includes('(Trophée)')) { 
+      cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
+    } else if (fish.fish_name.includes('(Espèce Rare)')) {
+      badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    }
     
     const baseName = getBaseFishName(fish.fish_name);
     const slug = getImageSlug(baseName);
 
     card.className = cardClass;
     card.innerHTML = `
-      <div class="card-img-container">
+      <div class="card-img-container" style="position:relative;">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div class="fallback-icon fish-fallback">🐟</div>
+        <img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
@@ -1484,17 +1491,26 @@ function renderPrises() {
     const card = document.createElement('div');
     let cardClass = 'item-card fish-card';
     let labelClass = 'rarity-tague';
-    if (fish.fish_name.includes('(Trophée Bleu)')) { cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; }
-    else if (fish.fish_name.includes('(Trophée)')) { cardClass += ' trophee'; labelClass = 'rarity-trophee'; }
+    let badgeImg = 'badge_normal.png';
+    let badgeLabel = 'Tagué';
+
+    if (fish.fish_name.includes('(Trophée Bleu)')) { 
+      cardClass += ' trophee-bleu'; labelClass = 'rarity-trophee-bleu'; badgeImg = 'badge_blue_trophy.png'; badgeLabel = 'Trophée Bleu';
+    } else if (fish.fish_name.includes('(Trophée)')) { 
+      cardClass += ' trophee'; labelClass = 'rarity-trophee'; badgeImg = 'badge_trophy.png'; badgeLabel = 'Trophée';
+    } else if (fish.fish_name.includes('(Espèce Rare)')) {
+      badgeImg = 'badge_rare.png'; badgeLabel = 'Rare';
+    }
     
     const baseName = getBaseFishName(fish.fish_name);
     const slug = getImageSlug(baseName);
 
     card.className = cardClass;
     card.innerHTML = `
-      <div class="card-img-container">
+      <div class="card-img-container" style="position:relative;">
         <img class="fish-card-img" src="images/fish/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div class="fallback-icon fish-fallback">🏆</div>
+        <img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />
       </div>
       <div class="item-info">
         <h4 class="${labelClass}">${baseName} (${fish.fish_name.split('(')[1]}</h4>
