@@ -1337,36 +1337,42 @@ function renderRepair() {
   const reel = metadata.reels[u.current_reel];
 
   if (rod) {
-    const cost = Math.floor(rod.cost * 0.5);
-    const durability = (u.current_rod_durability || 100).toFixed(1);
+    const durabilityNum = u.current_rod_durability !== undefined ? u.current_rod_durability : 100;
+    const missingPercent = (100 - durabilityNum) / 100.0;
+    const cost = Math.max(1, Math.floor(rod.cost * missingPercent * 1.5));
+    const durabilityStr = durabilityNum.toFixed(1);
+
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
       <div class="item-info">
         <h4>${u.current_rod} (Canne)</h4>
-        <p>Durabilité : <span style="color:${durability < 30 ? 'var(--danger)' : 'var(--success)'};">${durability}%</span></p>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'};">${durabilityStr}%</span></p>
       </div>
       <div class="item-card-footer">
-        <span class="item-price">${cost} 🪙</span>
-        <button class="btn btn-primary btn-sm" ${durability >= 100 ? 'disabled' : ''} onclick="repairGear('rod', '${u.current_rod}')">Réparer</button>
+        <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('rod', '${u.current_rod}')">Réparer</button>
       </div>
     `;
     grid.appendChild(card);
   }
 
   if (reel) {
-    const cost = Math.floor(reel.cost * 0.5);
-    const durability = (u.current_reel_durability || 100).toFixed(1);
+    const durabilityNum = u.current_reel_durability !== undefined ? u.current_reel_durability : 100;
+    const missingPercent = (100 - durabilityNum) / 100.0;
+    const cost = Math.max(1, Math.floor(reel.cost * missingPercent * 1.5));
+    const durabilityStr = durabilityNum.toFixed(1);
+
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
       <div class="item-info">
         <h4>${u.current_reel} (Moulinet)</h4>
-        <p>Durabilité : <span style="color:${durability < 30 ? 'var(--danger)' : 'var(--success)'};">${durability}%</span></p>
+        <p>Durabilité : <span style="color:${durabilityNum < 30 ? 'var(--danger)' : 'var(--success)'};">${durabilityStr}%</span></p>
       </div>
       <div class="item-card-footer">
-        <span class="item-price">${cost} 🪙</span>
-        <button class="btn btn-primary btn-sm" ${durability >= 100 ? 'disabled' : ''} onclick="repairGear('reel', '${u.current_reel}')">Réparer</button>
+        <span class="item-price">${durabilityNum >= 100 ? 0 : cost} 🪙</span>
+        <button class="btn btn-primary btn-sm" ${durabilityNum >= 100 ? 'disabled' : ''} onclick="repairGear('reel', '${u.current_reel}')">Réparer</button>
       </div>
     `;
     grid.appendChild(card);
@@ -1375,7 +1381,7 @@ function renderRepair() {
 
 async function repairGear(type, name) {
   try {
-    const res = await fetch(`${API_URL}/api/repair`, {
+    const res = await fetch(`${API_URL}/api/shop/repair`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
