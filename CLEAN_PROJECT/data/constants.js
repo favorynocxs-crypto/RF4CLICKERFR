@@ -82,8 +82,12 @@ const RODS = {
 const REELS = {
   'Express Fishing Skarp 2 2000S': { maxDrag: 4.6, cost: 0, multiplier: 1.0, levelRequired: 1, mapName: 'Lac aux moustique', subType: 'fond' },
   'Syberia Gold 60S': { maxDrag: 6.5, cost: 500, multiplier: 1.25, levelRequired: 5, mapName: 'Lac aux moustique', subType: 'fond' },
+  'Zeiman Rocket Jet SG80 Desert sand': { maxDrag: 7.5, cost: 500, multiplier: 1.25, levelRequired: 5, mapName: 'Rivière Belaya', subType: 'spinning' },
+  'Zeiman Black Box ZBB60': { maxDrag: 12.0, cost: 2500, multiplier: 2.20, levelRequired: 15, mapName: 'Rivière Belaya', subType: 'spinning' },
   'Beluga Venga Classic 10000': { maxDrag: 12.5, cost: 2500, multiplier: 2.20, levelRequired: 15, mapName: 'Lac cuivré', subType: 'fond' },
+  'Zeiman ZM Ranger Z60': { maxDrag: 24.0, cost: 10000, multiplier: 4.50, levelRequired: 25, mapName: 'Rivière Belaya', subType: 'spinning' },
   'Reef Turion SW 30000': { maxDrag: 25.5, cost: 10000, multiplier: 4.50, levelRequired: 25, mapName: 'Lac cuivré', subType: 'fond' },
+  'SAT Rigal 20 2S': { maxDrag: 30.0, cost: 12500, multiplier: 5.50, levelRequired: 20, mapName: 'Mer de Norvège', subType: 'mer' },
   'Zeiman Borealica 20': { maxDrag: 40.0, cost: 25000, multiplier: 7.00, levelRequired: 25, mapName: 'Mer de Norvège', subType: 'mer' },
   'Zeiman Electro Raptor 40': { maxDrag: 80.0, cost: 50000, multiplier: 12.00, levelRequired: 50, mapName: 'Mer de Norvège', subType: 'mer' }
 };
