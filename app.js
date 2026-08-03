@@ -2012,3 +2012,4 @@ async function repairGear(type, name) {
 }
 
 init();
+}
