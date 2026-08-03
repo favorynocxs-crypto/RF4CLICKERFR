@@ -242,6 +242,16 @@ function updateHUD() {
   xpProgress.style.width = `${progressPercent}%`;
   hudXpVal.innerText = `${user.xp} / ${nextLvlXP} XP`;
 
+  // Energy bar HUD update
+  const energyVal = user.energy !== undefined ? user.energy : 100.0;
+  const energyProgress = document.getElementById('energy-progress');
+  const hudEnergyVal = document.getElementById('hud-energy-val');
+  if (energyProgress && hudEnergyVal) {
+    energyProgress.style.width = `${Math.max(0, Math.min(100, energyVal))}%`;
+    energyProgress.style.background = energyVal < 30.0 ? 'var(--danger)' : 'var(--success)';
+    hudEnergyVal.innerText = `⚡ ${energyVal.toFixed(1)}%`;
+  }
+
   // Setup items
   setupRod.innerText = user.current_rod;
   setupReel.innerText = user.current_reel;
@@ -920,6 +930,30 @@ function renderShop(category) {
       `;
       grid.appendChild(card);
     });
+  } else if (category === 'coffee') {
+    // Render Coffee items
+    const coffeeItems = [
+      { id: 'cup', name: '☕ Tasse de Café', desc: 'Restaure +20% d\'énergie immédiatement.', price: 50, icon: '☕' },
+      { id: 'thermos', name: '🧴 Thermos de Café', desc: 'Restaure +100% d\'énergie immédiatement (énergie max).', price: 200, icon: '🧴' }
+    ];
+    coffeeItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `
+        <div class="card-img-container">
+          <div class="fallback-icon" style="display:flex; font-size:2.5rem;">${item.icon}</div>
+        </div>
+        <div class="item-info">
+          <h4>${item.name}</h4>
+          <p>${item.desc}</p>
+        </div>
+        <div class="item-card-footer">
+          <span class="item-price">${item.price} 🪙</span>
+          <button class="btn btn-primary btn-sm" onclick="buyCoffee('${item.id}')">Acheter</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
   } else if (category === 'p2w') {
     // Boutique Premium Pay-to-Win
     const packs = [
@@ -1002,6 +1036,30 @@ function renderShop(category) {
     });
   }
 }
+
+async function buyCoffee(type) {
+  try {
+    const res = await fetch(`${API_URL}/api/shop/coffee`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message, 'success');
+      currentSilver = data.newSilver;
+      await refreshState();
+    } else {
+      showToast(data.error, 'danger');
+    }
+  } catch (err) {
+    showToast('Erreur lors de l\'achat de café', 'danger');
+  }
+}
+window.buyCoffee = buyCoffee;
 
 async function buyAutoHelper(name, type) {
   try {
