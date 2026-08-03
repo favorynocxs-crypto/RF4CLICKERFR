@@ -1,28 +1,34 @@
 const express = require('express');
 const db = require('../database');
 const { WATER_BODIES, RODS, REELS, LINES, BAITS, AUTO_FISHERS, AUTO_CLICKER, FISH_DATABASE } = require('../data/constants');
-const { getUserStats, getQuestsStatus, authenticate } = require('../utils');
+const { getUserStats, getQuestsStatus, calculateLevel, authenticate } = require('../utils');
 
 const router = express.Router();
 
 router.get('/state', authenticate, async (req, res) => {
   try {
+    const newLevel = calculateLevel(req.user.xp);
+    if (newLevel !== req.user.level) {
+      req.user.level = newLevel;
+      await db.query('UPDATE users SET level = $1 WHERE id = $2', [newLevel, req.user.id]);
+    }
+
     if (req.user.current_water_body === 'Mosquito Lake' || !WATER_BODIES[req.user.current_water_body]) {
       req.user.current_water_body = 'Lac aux moustique';
       await db.query('UPDATE users SET current_water_body = \'Lac aux moustique\' WHERE id = $1', [req.user.id]);
     }
     
-    if (req.user.current_rod === 'Starter Rod' || req.user.current_rod === 'Siberia Starter Tele') {
-      await db.query(`UPDATE users SET current_rod = 'Comfort FD360' WHERE id = $1`, [req.user.id]);
-      req.user.current_rod = 'Comfort FD360';
+    if (!RODS[req.user.current_rod]) {
+      await db.query(`UPDATE users SET current_rod = 'Kama Comfort FD360' WHERE id = $1`, [req.user.id]);
+      req.user.current_rod = 'Kama Comfort FD360';
     }
-    if (req.user.current_reel === 'Starter Reel' || req.user.current_reel === 'Express Fishing Lacerti 4000S') {
-      await db.query(`UPDATE users SET current_reel = 'Express Fishing Spark 1 2000S' WHERE id = $1`, [req.user.id]);
-      req.user.current_reel = 'Express Fishing Spark 1 2000S';
+    if (!REELS[req.user.current_reel]) {
+      await db.query(`UPDATE users SET current_reel = 'Express Fishing Skarp 2 2000S' WHERE id = $1`, [req.user.id]);
+      req.user.current_reel = 'Express Fishing Skarp 2 2000S';
     }
-    if (req.user.current_line === 'Starter Line') {
-      await db.query(`UPDATE users SET current_line = 'Siberia Mono SS (3.2kg)' WHERE id = $1`, [req.user.id]);
-      req.user.current_line = 'Siberia Mono SS (3.2kg)';
+    if (!LINES[req.user.current_line]) {
+      await db.query(`UPDATE users SET current_line = 'Siberia Mono SS (6kg 150m)' WHERE id = $1`, [req.user.id]);
+      req.user.current_line = 'Siberia Mono SS (6kg 150m)';
     }
     
     const inventory = await db.all('SELECT item_type, item_name, quantity FROM inventory WHERE user_id = $1', [req.user.id]);
@@ -46,10 +52,23 @@ router.get('/state', authenticate, async (req, res) => {
       await db.query('UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id = $1', [req.user.id]);
     }
 
-    // Get vivier (fish stringer) contents
-    const vivierRows = await db.all('SELECT * FROM vivier WHERE user_id = $1', [req.user.id]);
+    // Get vivier (fish stringer) contents - unsold fish from catches
+    const vivierRows = await db.all('SELECT id, fish_name, weight, silver_value, xp_value, sold, timestamp FROM catches WHERE user_id = $1 AND (sold = FALSE OR sold IS NULL) ORDER BY timestamp DESC', [req.user.id]);
     const vivier = vivierRows || [];
+
+    // Get all catches for records (Mes Prises)
+    const allCatchesRows = await db.all('SELECT fish_name, weight, silver_value, timestamp FROM catches WHERE user_id = $1 ORDER BY weight DESC', [req.user.id]);
+    const records = allCatchesRows || [];
+
     const quests = await getQuestsStatus(req.user.id);
+
+    // Passive Energy Recovery (+1.0% per 2 seconds of inactivity/repos)
+    let currentEnergy = req.user.energy !== undefined ? req.user.energy : 100.0;
+    if (elapsedSeconds >= 2 && currentEnergy < 100.0) {
+      const recovered = (elapsedSeconds / 2.0) * 1.0;
+      currentEnergy = Math.min(100.0, Number((currentEnergy + recovered).toFixed(1)));
+      await db.query('UPDATE users SET energy = $1 WHERE id = $2', [currentEnergy, req.user.id]);
+    }
 
     res.json({
       user: {
@@ -57,16 +76,23 @@ router.get('/state', authenticate, async (req, res) => {
         silver: req.user.silver,
         xp: req.user.xp,
         level: req.user.level,
+        energy: currentEnergy,
         current_water_body: req.user.current_water_body,
         current_rod: req.user.current_rod,
         current_reel: req.user.current_reel,
         current_line: req.user.current_line,
         current_bait: req.user.current_bait,
-        current_style: req.user.current_style
+        current_style: req.user.current_style,
+        total_catches: req.user.total_catches || 0,
+        total_capital: req.user.total_capital || 0,
+        total_silver_spent: req.user.total_silver_spent || 0,
+        total_time_played: req.user.total_time_played || 0,
+        total_clicks: req.user.total_clicks || 0
       },
       inventory,
       stats,
       vivier,
+      records,
       quests,
       offline: {
         seconds: elapsedSeconds,
@@ -282,6 +308,74 @@ router.get('/metadata', (req, res) => {
     waterBodies: WATER_BODIES,
     fishDatabase: FISH_DATABASE
   });
+});
+
+router.post('/admin/reset', async (req, res) => {
+  const { secretKey } = req.body;
+  if (secretKey !== 'RF4_RESET_2026') {
+    return res.status(403).json({ error: 'Secret Key invalide' });
+  }
+
+  try {
+    await db.query('BEGIN');
+    
+    // Reset all users data to Level 1, 50 Silver, default gear, full energy & durability
+    await db.query(`
+      UPDATE users SET 
+        silver = 50.0,
+        xp = 0,
+        level = 1,
+        energy = 100.0,
+        current_water_body = 'Lac aux moustique',
+        current_rod = 'Kama Comfort FD360',
+        current_reel = 'Express Fishing Skarp 2 2000S',
+        current_line = 'Siberia Mono SS (6kg 150m)',
+        current_bait = 'Pain',
+        current_style = 'fond',
+        current_rod_durability = 100.0,
+        current_reel_durability = 100.0,
+        total_clicks = 0,
+        total_silver_spent = 0.0,
+        total_capital = 50.0,
+        total_catches = 0
+    `);
+
+    // Wipe inventory (purchased gear & auto fishers)
+    await db.query('DELETE FROM inventory');
+
+    // Re-insert default starting gear for every existing user
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'rod', 'Kama Comfort FD360', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'reel', 'Express Fishing Skarp 2 2000S', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'line', 'Siberia Mono SS (6kg 150m)', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'bait', 'Pain', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+
+    // Empty all catches (Bourriche/Vivier) and quests
+    await db.query('DELETE FROM catches');
+    await db.query('DELETE FROM vivier');
+    await db.query('DELETE FROM user_quests');
+
+    await db.query('COMMIT');
+    res.json({ success: true, message: 'Réinitialisation globale de tous les joueurs effectuée avec succès !' });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Échec de la réinitialisation globale: ' + err.message });
+  }
 });
 
 module.exports = router;
