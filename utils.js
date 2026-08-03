@@ -32,7 +32,7 @@ function verifyFishToken(token) {
 
 function calculateLevel(xp) {
   let level = 1;
-  while (xp >= level * level * 100) {
+  while (xp >= level * level * 250) {
     level++;
   }
   return level;
@@ -41,27 +41,46 @@ function calculateLevel(xp) {
 async function getUserStats(userId, user) {
   let flatSPC = 1.0;
   
+  // Calculate durability penalty (0% durability = 0 power, <20% = 50% power)
+  const rodDurability = user.current_rod_durability !== undefined ? user.current_rod_durability : 100;
+  let rodEfficiency = 1.0;
+  if (rodDurability <= 0) rodEfficiency = 0.0;
+  else if (rodDurability < 20) rodEfficiency = 0.5;
+
+  const reelDurability = user.current_reel_durability !== undefined ? user.current_reel_durability : 100;
+  let reelEfficiency = 1.0;
+  if (reelDurability <= 0) reelEfficiency = 0.0;
+  else if (reelDurability < 20) reelEfficiency = 0.5;
+
   const rod = user.current_rod;
-  if (RODS[rod]) flatSPC += RODS[rod].addPower;
+  if (RODS[rod]) flatSPC += (RODS[rod].addPower * rodEfficiency);
 
   const bait = user.current_bait;
   if (BAITS[bait]) flatSPC += BAITS[bait].addPower;
 
   let reelMult = 1.0;
   const reel = user.current_reel;
-  if (REELS[reel]) reelMult = REELS[reel].multiplier;
+  if (REELS[reel]) reelMult = 1.0 + ((REELS[reel].multiplier - 1.0) * reelEfficiency);
 
-  const baseSPC = flatSPC * reelMult;
+  let baseSPC = flatSPC * reelMult;
+
+  // Apply Fatigue penalty: -50% click power when energy < 30%
+  const energy = user.energy !== undefined ? user.energy : 100.0;
+  if (energy < 30.0) {
+    baseSPC *= 0.5;
+  }
 
   let critChance = 0.05;
   const line = user.current_line;
   if (LINES[line]) critChance += LINES[line].critChance;
 
   let sps = 0.0;
-  const helpers = await db.all('SELECT item_name, quantity FROM inventory WHERE user_id = $1 AND item_type = $2', [userId, 'auto_fisher']);
+  const helpers = await db.all('SELECT item_name, quantity FROM inventory WHERE user_id = $1 AND (item_type = $2 OR item_type = $3)', [userId, 'auto_fisher', 'auto_clicker']);
   for (const h of helpers) {
     if (AUTO_FISHERS[h.item_name]) {
       sps += AUTO_FISHERS[h.item_name].sps * h.quantity;
+    } else if (AUTO_CLICKER[h.item_name]) {
+      sps += AUTO_CLICKER[h.item_name].sps * h.quantity;
     }
   }
 
