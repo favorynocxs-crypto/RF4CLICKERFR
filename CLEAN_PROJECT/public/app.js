@@ -158,6 +158,7 @@ async function refreshState() {
     renderBourriche();
     renderQuests();
     renderAccount();
+    renderCarnet();
 
     // Check offline progress
     if (data.offline && data.offline.silverEarned > 0) {
@@ -219,9 +220,47 @@ const WATER_BODIES_BG = {
   'Mer de Norvège': 'map_norvege.jpg'
 };
 
+// In-game time system: 1 hour IRL (3600s) = 24 hours In-Game (86400s) -> 1s IRL = 24s In-Game
+function getInGameTimeAndWeather() {
+  const now = new Date();
+  const secondsInHour = (now.getMinutes() * 60) + now.getSeconds() + (now.getMilliseconds() / 1000);
+  const totalInGameSeconds = (secondsInHour * 24) % 86400;
+  
+  const inGameHours = Math.floor(totalInGameSeconds / 3600);
+  const inGameMinutes = Math.floor((totalInGameSeconds % 3600) / 60);
+
+  const formattedHours = String(inGameHours).padStart(2, '0');
+  const formattedMinutes = String(inGameMinutes).padStart(2, '0');
+
+  const isNight = inGameHours >= 21 || inGameHours < 5;
+
+  // Weather pattern based on 20-min cycles
+  const cycleIndex = Math.floor(now.getMinutes() / 15);
+  let weatherText = '☀️ Ensoleillé';
+  if (cycleIndex === 1) weatherText = '☁️ Nuageux';
+  else if (cycleIndex === 2) weatherText = '🌧️ Pluvieux';
+  else if (cycleIndex === 3) weatherText = '🌫️ Brumeux';
+
+  if (isNight) weatherText = `🌙 Nuit (${weatherText.split(' ')[1] || 'Calme'})`;
+
+  return {
+    timeStr: `🕒 ${formattedHours}:${formattedMinutes}`,
+    weatherStr: weatherText,
+    isNight,
+    isRainy: weatherText.includes('Pluvieux')
+  };
+}
+
 function updateHUD() {
   if (!userState) return;
   const { user } = userState;
+  
+  // Update Clock & Weather Widget
+  const tw = getInGameTimeAndWeather();
+  const clockEl = document.getElementById('hud-clock-time');
+  const weatherEl = document.getElementById('hud-weather-status');
+  if (clockEl) clockEl.innerText = tw.timeStr;
+  if (weatherEl) weatherEl.innerText = tw.weatherStr;
   
   cookieSilverVal.innerText = currentSilver.toFixed(2);
   cookieSpsVal.innerText = spsRate.toFixed(2);
@@ -933,8 +972,8 @@ function renderShop(category) {
   } else if (category === 'coffee') {
     // Render Coffee items
     const coffeeItems = [
-      { id: 'cup', name: '☕ Tasse de Café', desc: 'Restaure +20% d\'énergie immédiatement.', price: 50, icon: '☕' },
-      { id: 'thermos', name: '🧴 Thermos de Café', desc: 'Restaure +100% d\'énergie immédiatement (énergie max).', price: 200, icon: '🧴' }
+      { id: 'cup', name: '☕ Tasse de Café', desc: 'Restaure +30% d\'énergie immédiatement.', price: 15, icon: '☕' },
+      { id: 'thermos', name: '🧴 Thermos de Café', desc: 'Restaure +100% d\'énergie immédiatement (énergie max).', price: 45, icon: '🧴' }
     ];
     coffeeItems.forEach(item => {
       const card = document.createElement('div');
@@ -1436,6 +1475,72 @@ function renderRepair() {
     grid.appendChild(card);
   }
 }
+
+let selectedCarnetMapFilter = 'Lac aux moustique';
+
+function renderCarnet() {
+  const grid = document.getElementById('carnet-grid');
+  if (!grid || !userState || !metadata) return;
+  grid.innerHTML = '';
+
+  const fishList = metadata.fishDatabase[selectedCarnetMapFilter] || [];
+  const records = userState.records || [];
+
+  fishList.forEach(fish => {
+    // Find highest trophy achieved
+    const catchedNormal = records.find(r => r.fish_name.includes(fish.name));
+    const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
+    const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
+
+    let badgeIcon = '🔒 Non découvert';
+    let badgeColor = 'var(--text-muted)';
+    let cardStyle = 'filter: grayscale(80%); opacity: 0.6;';
+
+    if (catchedBlueTrophy) {
+      badgeIcon = '💎 Trophée Bleu';
+      badgeColor = '#3498db';
+      cardStyle = 'border: 2px solid #3498db; background: rgba(52, 152, 219, 0.15);';
+    } else if (catchedTrophy) {
+      badgeIcon = '🏆 Trophée';
+      badgeColor = '#f1c40f';
+      cardStyle = 'border: 2px solid #f1c40f; background: rgba(241, 196, 15, 0.15);';
+    } else if (catchedNormal) {
+      badgeIcon = '🐟 Tagué';
+      badgeColor = 'var(--success)';
+      cardStyle = 'border: 1px solid var(--success);';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.style.cssText = cardStyle;
+
+    const slug = getImageSlug(fish.name);
+    card.innerHTML = `
+      <div class="card-img-container">
+        <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="fallback-icon gear-fallback">🐟</div>
+      </div>
+      <div class="item-info">
+        <h4>${fish.name}</h4>
+        <p style="color: ${badgeColor}; font-weight: 700; margin-top: 4px;">${badgeIcon}</p>
+        ${catchedNormal ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Max: ${(catchedBlueTrophy || catchedTrophy || catchedNormal).weight.toFixed(3)} kg</p>` : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const carnetBtns = document.querySelectorAll('#carnet-map-filter .shop-tab-btn');
+  carnetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      carnetBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedCarnetMapFilter = btn.getAttribute('data-carnet-filter');
+      renderCarnet();
+    });
+  });
+});
 
 async function repairGear(type, name) {
   try {
