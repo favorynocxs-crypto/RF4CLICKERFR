@@ -1492,22 +1492,28 @@ function renderCarnet() {
     const catchedTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée') && !r.fish_name.includes('Trophée Bleu'));
     const catchedBlueTrophy = records.find(r => r.fish_name.includes(fish.name) && r.fish_name.includes('Trophée Bleu'));
 
-    let badgeIcon = '🔒 Non découvert';
-    let badgeColor = 'var(--text-muted)';
-    let cardStyle = 'filter: grayscale(80%); opacity: 0.6;';
+    let badgeImg = 'badge_normal.jpg';
+    let badgeLabel = 'Tagué';
+    let badgeColor = 'var(--success)';
+    let cardStyle = 'border: 1px solid rgba(255,255,255,0.1);';
 
     if (catchedBlueTrophy) {
-      badgeIcon = '💎 Trophée Bleu';
+      badgeImg = 'badge_blue_trophy.jpg';
+      badgeLabel = 'Trophée Bleu';
       badgeColor = '#3498db';
       cardStyle = 'border: 2px solid #3498db; background: rgba(52, 152, 219, 0.15);';
     } else if (catchedTrophy) {
-      badgeIcon = '🏆 Trophée';
+      badgeImg = 'badge_trophy.jpg';
+      badgeLabel = 'Trophée';
       badgeColor = '#f1c40f';
       cardStyle = 'border: 2px solid #f1c40f; background: rgba(241, 196, 15, 0.15);';
     } else if (catchedNormal) {
-      badgeIcon = '🐟 Tagué';
+      badgeImg = 'badge_normal.jpg';
+      badgeLabel = 'Tagué';
       badgeColor = 'var(--success)';
       cardStyle = 'border: 1px solid var(--success);';
+    } else {
+      cardStyle = 'filter: grayscale(80%); opacity: 0.5;';
     }
 
     const card = document.createElement('div');
@@ -1516,13 +1522,16 @@ function renderCarnet() {
 
     const slug = getImageSlug(fish.name);
     card.innerHTML = `
-      <div class="card-img-container">
+      <div class="card-img-container" style="position:relative;">
         <img class="gear-card-img" src="images/gear/${slug}.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
         <div class="fallback-icon gear-fallback">🐟</div>
+        ${catchedNormal ? `<img src="images/${badgeImg}" style="position:absolute; top:4px; right:4px; width:22px; height:28px; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));" title="${badgeLabel}" />` : ''}
       </div>
       <div class="item-info">
         <h4>${fish.name}</h4>
-        <p style="color: ${badgeColor}; font-weight: 700; margin-top: 4px;">${badgeIcon}</p>
+        <p style="color: ${badgeColor}; font-weight: 700; margin-top: 4px; display:flex; align-items:center; gap:4px;">
+          ${catchedNormal ? `<img src="images/${badgeImg}" style="width:14px; height:18px; object-fit:contain;" />` : ''} ${catchedNormal ? badgeLabel : '🔒 Non découvert'}
+        </p>
         ${catchedNormal ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Max: ${(catchedBlueTrophy || catchedTrophy || catchedNormal).weight.toFixed(3)} kg</p>` : ''}
       </div>
     `;
