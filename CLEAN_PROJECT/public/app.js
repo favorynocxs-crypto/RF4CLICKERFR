@@ -1641,10 +1641,20 @@ function renderMapChallenges() {
 
   const totalSpecies = fishList.length;
 
+  // Scale rewards dynamically per map difficulty
+  let rMult = 1.0;
+  if (selectedMapChallengeFilter === 'Rivière Belaya') rMult = 2.5;
+  else if (selectedMapChallengeFilter === 'Lac cuivré') rMult = 6.0;
+  else if (selectedMapChallengeFilter === 'Mer de Norvège') rMult = 15.0;
+
+  const reward1 = Math.floor(500 * rMult).toLocaleString('fr-FR');
+  const reward2 = Math.floor(2500 * rMult).toLocaleString('fr-FR');
+  const reward3 = Math.floor(10000 * rMult).toLocaleString('fr-FR');
+
   const steps = [
-    { num: 1, title: '🟢 Étape 1 : Maître du Lieu', desc: 'Attraper toutes les espèces de la map au moins une fois.', done: step1Caught, total: totalSpecies, reward: '+500 Silver & Title' },
-    { num: 2, title: '🟡 Étape 2 : Chasseur de Trophées', desc: 'Attraper toutes les espèces de la map en version Trophée.', done: step2Trophy, total: totalSpecies, reward: '+2,500 Silver & Badge' },
-    { num: 3, title: '🔵 Étape 3 : Légende Vivante (Trophée Bleu)', desc: 'Attraper toutes les espèces de la map en version Trophée Bleu.', done: step3Blue, total: totalSpecies, reward: '+10,000 Silver & Trophée Or' }
+    { num: 1, title: '🟢 Étape 1 : Maître du Lieu', desc: 'Attraper toutes les espèces de la map au moins une fois.', done: step1Caught, total: totalSpecies, reward: `+${reward1} Silver & Titre Exclusif` },
+    { num: 2, title: '🟡 Étape 2 : Chasseur de Trophées', desc: 'Attraper toutes les espèces de la map en version Trophée.', done: step2Trophy, total: totalSpecies, reward: `+${reward2} Silver & Badge Rare` },
+    { num: 3, title: '🔵 Étape 3 : Légende Vivante (Trophée Bleu)', desc: 'Attraper toutes les espèces de la map en version Trophée Bleu.', done: step3Blue, total: totalSpecies, reward: `+${reward3} Silver & Trophée d'Or` }
   ];
 
   steps.forEach(st => {
