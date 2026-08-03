@@ -58,6 +58,7 @@ async function initSchema() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_silver_spent REAL DEFAULT 0.0`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_capital REAL DEFAULT 50.0`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_catches INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS energy REAL DEFAULT 100.0`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_until TIMESTAMP DEFAULT NULL`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS has_voyageur BOOLEAN DEFAULT FALSE`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS has_chanceux BOOLEAN DEFAULT FALSE`);
