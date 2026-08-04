@@ -1,0 +1,473 @@
+const express = require('express');
+const db = require('../database');
+const { WATER_BODIES, RODS, REELS, LINES, BAITS, AUTO_FISHERS, AUTO_CLICKER, FISH_DATABASE, PASSIVE_SKILLS } = require('../data/constants');
+const { getUserStats, getQuestsStatus, calculateLevel, authenticate } = require('../utils');
+
+const router = express.Router();
+
+router.get('/state', authenticate, async (req, res) => {
+  try {
+    const newLevel = calculateLevel(req.user.xp);
+    if (newLevel !== req.user.level) {
+      req.user.level = newLevel;
+      await db.query('UPDATE users SET level = $1 WHERE id = $2', [newLevel, req.user.id]);
+    }
+
+    if (req.user.current_water_body === 'Mosquito Lake' || !WATER_BODIES[req.user.current_water_body]) {
+      req.user.current_water_body = 'Lac aux moustique';
+      await db.query('UPDATE users SET current_water_body = \'Lac aux moustique\' WHERE id = $1', [req.user.id]);
+    }
+    
+    if (!RODS[req.user.current_rod]) {
+      await db.query(`UPDATE users SET current_rod = 'Kama Comfort FD360' WHERE id = $1`, [req.user.id]);
+      req.user.current_rod = 'Kama Comfort FD360';
+    }
+    if (!REELS[req.user.current_reel]) {
+      await db.query(`UPDATE users SET current_reel = 'Express Fishing Skarp 2 2000S' WHERE id = $1`, [req.user.id]);
+      req.user.current_reel = 'Express Fishing Skarp 2 2000S';
+    }
+    if (!LINES[req.user.current_line]) {
+      await db.query(`UPDATE users SET current_line = 'Siberia Mono SS (6kg 150m)' WHERE id = $1`, [req.user.id]);
+      req.user.current_line = 'Siberia Mono SS (6kg 150m)';
+    }
+    
+    const inventory = await db.all('SELECT item_type, item_name, quantity FROM inventory WHERE user_id = $1', [req.user.id]);
+    const stats = await getUserStats(req.user.id, req.user);
+    
+    const now = new Date();
+    const lastActive = new Date(req.user.last_active);
+    const elapsedSeconds = Math.max(0, Math.floor((now - lastActive) / 1000));
+    
+    let offlineSilver = 0;
+    if (elapsedSeconds > 2 && stats.sps > 0 && req.user.has_offline) {
+      const offlineSeconds = Math.min(elapsedSeconds, 3600);
+      offlineSilver = Number((offlineSeconds * stats.sps * 0.5).toFixed(2));
+      
+      await db.query(
+        'UPDATE users SET silver = silver + $1, total_capital = total_capital + $1, last_active = CURRENT_TIMESTAMP WHERE id = $2',
+        [offlineSilver, req.user.id]
+      );
+      req.user.silver = Number((req.user.silver + offlineSilver).toFixed(2));
+    } else {
+      await db.query('UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id = $1', [req.user.id]);
+    }
+
+    // Get vivier (fish stringer) contents - unsold fish from catches
+    const vivierRows = await db.all('SELECT id, fish_name, weight, silver_value, xp_value, sold, timestamp FROM catches WHERE user_id = $1 AND (sold = FALSE OR sold IS NULL) ORDER BY timestamp DESC', [req.user.id]);
+    const vivier = vivierRows || [];
+
+    // Get all catches for records (Mes Prises)
+    const allCatchesRows = await db.all('SELECT fish_name, weight, silver_value, timestamp FROM catches WHERE user_id = $1 ORDER BY weight DESC', [req.user.id]);
+    const records = allCatchesRows || [];
+
+    const quests = await getQuestsStatus(req.user.id);
+
+    // Passive Energy Recovery (+1.0% per 2 seconds of inactivity/repos)
+    let currentEnergy = req.user.energy !== undefined ? req.user.energy : 100.0;
+    if (elapsedSeconds >= 2 && currentEnergy < 100.0) {
+      const recovered = (elapsedSeconds / 2.0) * 1.0;
+      currentEnergy = Math.min(100.0, Number((currentEnergy + recovered).toFixed(1)));
+      await db.query('UPDATE users SET energy = $1 WHERE id = $2', [currentEnergy, req.user.id]);
+    }
+
+    res.json({
+      user: {
+        username: req.user.username,
+        silver: req.user.silver,
+        xp: req.user.xp,
+        level: req.user.level,
+        energy: currentEnergy,
+        current_water_body: req.user.current_water_body,
+        current_rod: req.user.current_rod,
+        current_reel: req.user.current_reel,
+        current_line: req.user.current_line,
+        current_bait: req.user.current_bait,
+        current_style: req.user.current_style,
+        total_catches: req.user.total_catches || 0,
+        total_capital: req.user.total_capital || 0,
+        total_silver_spent: req.user.total_silver_spent || 0,
+        total_time_played: req.user.total_time_played || 0,
+        total_clicks: req.user.total_clicks || 0,
+        crit_chance_bonus: req.user.crit_chance_bonus || 0.0,
+        big_fish_bonus: req.user.big_fish_bonus || 0.0,
+        xp_bonus: req.user.xp_bonus || 0.0,
+        active_title: req.user.active_title || null
+      },
+      inventory,
+      stats,
+      vivier,
+      records,
+      quests,
+      offline: {
+        seconds: elapsedSeconds,
+        silverEarned: offlineSilver
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch user state' });
+  }
+});
+
+router.post('/sync', authenticate, async (req, res) => {
+  try {
+    const stats = await getUserStats(req.user.id, req.user);
+    const now = new Date();
+    const lastActive = new Date(req.user.last_active);
+    const elapsedSeconds = Math.max(0, Math.floor((now - lastActive) / 1000));
+
+    let silverEarned = 0;
+    if (elapsedSeconds >= 1 && stats.sps > 0) {
+      silverEarned = Number((elapsedSeconds * stats.sps).toFixed(2));
+    }
+
+    await db.query(
+      'UPDATE users SET silver = silver + $1, last_active = CURRENT_TIMESTAMP WHERE id = $2',
+      [silverEarned, req.user.id]
+    );
+
+    const updatedUser = await db.get('SELECT silver FROM users WHERE id = $1', [req.user.id]);
+
+    res.json({
+      success: true,
+      silverEarned,
+      newSilver: updatedUser.silver,
+      sps: stats.sps,
+      spc: stats.spc
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
+router.get('/quests', authenticate, async (req, res) => {
+  try {
+    const quests = await getQuestsStatus(req.user.id);
+    res.json(quests);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch quests' });
+  }
+});
+
+router.post('/quests/claim', authenticate, async (req, res) => {
+  const { questId } = req.body;
+  const quests = await getQuestsStatus(req.user.id);
+  const q = quests.find(item => item.id === questId);
+
+  if (!q) return res.status(400).json({ error: 'Quête inconnue' });
+  if (q.claimed) return res.status(400).json({ error: 'Récompense déjà récupérée' });
+  if (q.progress < q.target) return res.status(400).json({ error: 'Objectif non atteint' });
+
+  try {
+    await db.query('BEGIN');
+    
+    await db.query('UPDATE users SET silver = silver + $1, total_capital = total_capital + $1 WHERE id = $2', [q.silverReward, req.user.id]);
+    const updated = await db.get('SELECT silver FROM users WHERE id = $1', [req.user.id]);
+
+    await db.query(
+      'INSERT INTO user_quests (user_id, quest_id, completed, last_reset) VALUES ($1, $2, TRUE, CURRENT_TIMESTAMP) ON CONFLICT(user_id, quest_id) DO UPDATE SET completed = TRUE, last_reset = CURRENT_TIMESTAMP',
+      [req.user.id, questId]
+    );
+
+    await db.query('COMMIT');
+
+    res.json({ success: true, rewardMsg: q.rewardDesc, newSilver: updated.silver });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Claiming quest reward failed' });
+  }
+});
+
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const leaderboard = await db.all(
+      `SELECT username, level, xp, silver, 
+      (SELECT COALESCE(SUM(quantity), 0) FROM inventory WHERE inventory.user_id = users.id AND item_type = 'auto_fisher')::integer as total_helpers 
+      FROM users ORDER BY silver DESC LIMIT 10`
+    );
+    res.json(leaderboard);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+router.post('/travel', authenticate, async (req, res) => {
+  const { name } = req.body;
+  const wb = WATER_BODIES[name];
+
+  if (!wb) return res.status(400).json({ error: 'Invalid water body' });
+
+  const hasVoyageur = req.user.has_voyageur;
+  const cost = hasVoyageur ? 0 : wb.travelCost;
+
+  if (req.user.level < wb.levelRequired) {
+    return res.status(400).json({ error: `Niveau ${wb.levelRequired} requis` });
+  }
+  if (!hasVoyageur && req.user.silver < cost) {
+    return res.status(400).json({ error: 'Not enough Silver to travel!' });
+  }
+
+  try {
+    await db.query('BEGIN');
+    await db.query('UPDATE users SET current_water_body = $1, silver = silver - $2, total_silver_spent = total_silver_spent + $2 WHERE id = $3', [name, cost, req.user.id]);
+    const updated = await db.get('SELECT silver FROM users WHERE id = $1', [req.user.id]);
+    await db.query('COMMIT');
+
+    res.json({ success: true, newSilver: updated.silver });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Travel failed' });
+  }
+});
+
+router.post('/repair', authenticate, async (req, res) => {
+  const { type, name } = req.body;
+  let cost = 0;
+  
+  if (type === 'rod' && RODS[name]) {
+    cost = Math.floor(RODS[name].cost * 0.5);
+  } else if (type === 'reel' && REELS[name]) {
+    cost = Math.floor(REELS[name].cost * 0.5);
+  } else {
+    return res.status(400).json({ error: 'Équipement invalide' });
+  }
+
+  if (req.user.silver < cost) {
+    return res.status(400).json({ error: 'Pas assez de Silver pour réparer' });
+  }
+
+  try {
+    await db.query('BEGIN');
+    await db.query('UPDATE users SET silver = silver - $1, total_silver_spent = total_silver_spent + $1 WHERE id = $2', [cost, req.user.id]);
+    
+    if (type === 'rod') {
+      await db.query('UPDATE users SET current_rod_durability = 100.0 WHERE id = $1', [req.user.id]);
+    } else {
+      await db.query('UPDATE users SET current_reel_durability = 100.0 WHERE id = $1', [req.user.id]);
+    }
+    
+    await db.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Échec de la réparation' });
+  }
+});
+
+router.post('/equip', authenticate, async (req, res) => {
+  const { type, name } = req.body;
+
+  if (!['rod', 'reel', 'line', 'bait'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid gear type' });
+  }
+
+  try {
+    const item = await db.get('SELECT quantity FROM inventory WHERE user_id = $1 AND item_type = $2 AND item_name = $3', [req.user.id, type, name]);
+    if (!item || item.quantity <= 0) {
+      return res.status(400).json({ error: 'Vous ne possédez pas cet objet.' });
+    }
+
+    let field = '';
+    if (type === 'rod') field = 'current_rod';
+    else if (type === 'reel') field = 'current_reel';
+    else if (type === 'line') field = 'current_line';
+    else if (type === 'bait') field = 'current_bait';
+
+    await db.query(`UPDATE users SET ${field} = $1 WHERE id = $2`, [name, req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Equip failed' });
+  }
+});
+
+router.post('/style', authenticate, async (req, res) => {
+  const { style } = req.body;
+  if (!['fond', 'leurre', 'vif'].includes(style)) {
+    return res.status(400).json({ error: 'Style de peche invalide' });
+  }
+
+  const map = req.user.current_water_body;
+  const wb = WATER_BODIES[map] || WATER_BODIES['Lac aux moustique'];
+  
+  if (!wb.styles.includes(style)) {
+    return res.status(400).json({ error: `Ce plan d'eau n'autorise pas la peche au/de: ${style}` });
+  }
+
+  try {
+    await db.query('UPDATE users SET current_style = $1 WHERE id = $2', [style, req.user.id]);
+    res.json({ success: true, current_style: style });
+  } catch (err) {
+    res.status(500).json({ error: 'Style update failed' });
+  }
+});
+
+// ...
+router.get('/metadata', (req, res) => {
+  res.json({
+    rods: RODS,
+    reels: REELS,
+    lines: LINES,
+    baits: BAITS,
+    autoFishers: AUTO_FISHERS,
+    autoClickers: AUTO_CLICKER,
+    passiveSkills: PASSIVE_SKILLS,
+    waterBodies: WATER_BODIES,
+    fishDatabase: FISH_DATABASE
+  });
+});
+
+router.post('/admin/reset', async (req, res) => {
+  const { secretKey } = req.body;
+  if (secretKey !== 'RF4_RESET_2026') {
+    return res.status(403).json({ error: 'Secret Key invalide' });
+  }
+
+  try {
+    await db.query('BEGIN');
+    
+    // Reset all users data to Level 1, 50 Silver, default gear, full energy & durability
+    await db.query(`
+      UPDATE users SET 
+        silver = 50.0,
+        xp = 0,
+        level = 1,
+        energy = 100.0,
+        current_water_body = 'Lac aux moustique',
+        current_rod = 'Kama Comfort FD360',
+        current_reel = 'Express Fishing Skarp 2 2000S',
+        current_line = 'Siberia Mono SS (6kg 150m)',
+        current_bait = 'Pain',
+        current_style = 'fond',
+        current_rod_durability = 100.0,
+        current_reel_durability = 100.0,
+        total_clicks = 0,
+        total_silver_spent = 0.0,
+        total_capital = 50.0,
+        total_catches = 0
+    `);
+
+    // Wipe inventory (purchased gear & auto fishers)
+    await db.query('DELETE FROM inventory');
+
+    // Re-insert default starting gear for every existing user
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'rod', 'Kama Comfort FD360', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'reel', 'Express Fishing Skarp 2 2000S', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'line', 'Siberia Mono SS (6kg 150m)', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO inventory (user_id, item_type, item_name, quantity)
+      SELECT id, 'bait', 'Pain', 1 FROM users
+      ON CONFLICT DO NOTHING
+    `);
+
+    // Empty all catches (Bourriche/Vivier) and quests
+    await db.query('DELETE FROM catches');
+    await db.query('DELETE FROM vivier');
+    await db.query('DELETE FROM user_quests');
+
+    await db.query('COMMIT');
+    res.json({ success: true, message: 'Réinitialisation globale de tous les joueurs effectuée avec succès !' });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Échec de la réinitialisation globale: ' + err.message });
+  }
+});
+
+// --- Heartbeat Ping for Playtime Tracking ---
+router.post('/ping', authenticate, async (req, res) => {
+  try {
+    await db.query('UPDATE users SET total_time_played = total_time_played + 60, last_active = CURRENT_TIMESTAMP WHERE id = $1', [req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update playtime' });
+  }
+});
+
+// --- GET user claimed challenges ---
+router.get('/challenges/claimed', authenticate, async (req, res) => {
+  try {
+    const claimed = await db.all('SELECT challenge_id FROM claimed_challenges WHERE user_id = $1', [req.user.id]);
+    res.json(claimed.map(c => c.challenge_id));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch claimed challenges' });
+  }
+});
+
+// --- POST claim challenge ---
+router.post('/challenges/claim', authenticate, async (req, res) => {
+  const { challengeId, rewardSilver, rewardTitle } = req.body;
+  if (!challengeId) return res.status(400).json({ error: 'Missing challengeId' });
+
+  try {
+    // Check if already claimed
+    const existing = await db.get('SELECT 1 FROM claimed_challenges WHERE user_id = $1 AND challenge_id = $2', [req.user.id, challengeId]);
+    if (existing) return res.status(400).json({ error: 'Défi déjà récupéré !' });
+
+    await db.query('BEGIN');
+
+    // Insert claimed challenge
+    await db.query('INSERT INTO claimed_challenges (user_id, challenge_id) VALUES ($1, $2)', [req.user.id, challengeId]);
+
+    // Give silver
+    const silver = Number(rewardSilver) || 0;
+    if (silver > 0) {
+      await db.query('UPDATE users SET silver = silver + $1, total_capital = total_capital + $1 WHERE id = $2', [silver, req.user.id]);
+    }
+
+    // Give title
+    if (rewardTitle) {
+      await db.query('INSERT INTO user_titles (user_id, title) VALUES ($1, $2) ON CONFLICT DO NOTHING', [req.user.id, rewardTitle]);
+    }
+
+    await db.query('COMMIT');
+
+    const updatedUser = await db.get('SELECT silver FROM users WHERE id = $1', [req.user.id]);
+    res.json({ success: true, newSilver: updatedUser.silver });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch(e) {}
+    res.status(500).json({ error: 'Failed to claim challenge: ' + err.message });
+  }
+});
+
+// --- GET user titles ---
+router.get('/titles', authenticate, async (req, res) => {
+  try {
+    const titles = await db.all('SELECT title FROM user_titles WHERE user_id = $1', [req.user.id]);
+    const user = await db.get('SELECT active_title FROM users WHERE id = $1', [req.user.id]);
+    res.json({
+      unlocked: titles.map(t => t.title),
+      active: user.active_title || null
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch titles' });
+  }
+});
+
+// --- POST select active title ---
+router.post('/titles/select', authenticate, async (req, res) => {
+  const { title } = req.body; // Can be null to clear title
+  try {
+    if (title) {
+      // Verify user owns this title
+      const owned = await db.get('SELECT 1 FROM user_titles WHERE user_id = $1 AND title = $2', [req.user.id, title]);
+      if (!owned) return res.status(400).json({ error: 'Titre non débloqué !' });
+    }
+    await db.query('UPDATE users SET active_title = $1 WHERE id = $2', [title, req.user.id]);
+    res.json({ success: true, activeTitle: title });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to select active title' });
+  }
+});
+
+module.exports = router;

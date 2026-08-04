@@ -118,6 +118,24 @@ async function initSchema() {
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Claimed Map Challenges Table
+    await client.query(`CREATE TABLE IF NOT EXISTS claimed_challenges (
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      challenge_id TEXT NOT NULL,
+      PRIMARY KEY (user_id, challenge_id)
+    )`);
+
+    // Unlocked Titles Table
+    await client.query(`CREATE TABLE IF NOT EXISTS user_titles (
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      PRIMARY KEY (user_id, title)
+    )`);
+
+    // Add active_title column to users table
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS active_title TEXT DEFAULT NULL`);
+
+
     // Migration of legacy items to the new specified ones
     try {
       await client.query(`UPDATE users SET current_rod = 'Comfort FD360' WHERE current_rod = 'Starter Rod' OR current_rod = 'Siberia Starter Tele' OR current_rod = 'Starter Tele'`);
